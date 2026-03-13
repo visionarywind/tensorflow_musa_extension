@@ -17,17 +17,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # ssh-key: ${{ secrets.SSH_KEY }}
-          # ssh-strict: true
           fetch-depth: 0
  
       # 2. 将拉取到的代码拷贝到那个一直运行的容器中
       # 使用 github.run_id 创建独立目录，防止多次 PR 测试时的代码互相冲突
       - name: Copy code into running container
         run: |
-          PR_PATH="/tmp/pr_test_${{ github.run_id }}"
-          docker exec Runner mkdir -p /tmp/pr_test_${{ github.run_id }}
-          docker cp . Runner:/tmp/pr_test_${{ github.run_id }}
+          PR_PATH="/home/runner/pr_test_${{ github.run_id }}"
+          docker exec Runner mkdir -p /home/runner/pr_test_${{ github.run_id }}
+          docker cp . Runner:/home/runner/pr_test_${{ github.run_id }}
           echo "✅ Code copied to container path: $PR_PATH"
  
       # 4. 进入容器并验证 MUSA 设备
@@ -64,22 +62,22 @@ jobs:
           EOF
 
       # 5. 进入容器跑单元测试（已修复原脚本中状态输出覆盖的隐藏 Bug）
-      # - name: Run unit tests
-      #   id: run-tests
-      #   run: |
-      #     if docker exec Runner bash -c "cd /tmp/pr_test_${{ github.run_id }} && python -m pytest tests/unit/ -v --tb=short"; then
-      #       echo "status=success" >> $GITHUB_OUTPUT
-      #     else
-      #       echo "status=failure" >> $GITHUB_OUTPUT
-      #     fi
-      #   continue-on-error: true
+      - name: Run unit tests
+        id: run-tests
+        run: |
+          if docker exec Runner bash -c "cd /home/runner/pr_test_${{ github.run_id }} && python -m pytest tests/unit/ -v --tb=short"; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
  
       # 6. 进入容器跑集成测试
       # - name: Run integration tests (MUSA operators)
       #   id: run-integration
       #   if: steps.run-tests.outputs.status == 'success'
       #   run: |
-      #     if docker exec Runner bash -c "cd /tmp/pr_test_${{ github.run_id }} && python -m pytest tests/integration/ -v --tb=short"; then
+      #     if docker exec Runner bash -c "cd /home/runner/pr_test_${{ github.run_id }} && python -m pytest tests/integration/ -v --tb=short"; then
       #       echo "status=success" >> $GITHUB_OUTPUT
       #     else
       #       echo "status=failure" >> $GITHUB_OUTPUT
@@ -91,7 +89,7 @@ jobs:
       - name: Clean up container workspace
         if: always() # 确保即使前面的测试失败了，也会执行清理步骤
         run: |
-          docker exec Runner rm -rf /tmp/pr_test_${{ github.run_id }}
+          docker exec Runner rm -rf /home/runner/pr_test_${{ github.run_id }}
  
       # 8. GitHub 评论 (成功)
       - name: Comment PR with result (success)
