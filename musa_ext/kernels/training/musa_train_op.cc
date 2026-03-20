@@ -9,6 +9,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -34,6 +35,7 @@ class MusaApplyAdamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     Var *var, *m, *v;
     OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 0), &var));
     OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 1), &m));

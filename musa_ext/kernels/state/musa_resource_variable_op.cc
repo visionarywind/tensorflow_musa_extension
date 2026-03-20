@@ -3,6 +3,7 @@
 #include "tensorflow/core/framework/resource_mgr.h"
 #include "tensorflow/core/framework/resource_var.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -20,6 +21,7 @@ class MusaVarHandleOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     Tensor* out;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({}), &out));
     ResourceHandle handle =
@@ -41,6 +43,7 @@ class MusaAssignVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& value = ctx->input(1);
 
     if (ctx->num_outputs() > 0) {
@@ -78,6 +81,7 @@ class MusaReadVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     core::RefCountPtr<Var> var;
     const Tensor& handle_tensor = ctx->input(0);
     const ResourceHandle& handle = handle_tensor.flat<ResourceHandle>()(0);
@@ -120,6 +124,7 @@ class MusaVarIsInitializedOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     Tensor* out = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({}), &out));
     core::RefCountPtr<Var> var;
@@ -136,6 +141,7 @@ class MusaDestroyResourceOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     DeleteResource(ctx, HandleFromInput(ctx, 0));
   }
 };

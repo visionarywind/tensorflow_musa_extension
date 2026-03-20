@@ -20,6 +20,7 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -58,6 +59,7 @@ class MusaStatelessWhileOp : public OpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const int num_inputs = ctx->num_inputs();
 
     // Collect input tensors

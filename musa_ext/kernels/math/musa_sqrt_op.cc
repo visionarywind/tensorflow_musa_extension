@@ -3,6 +3,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -16,6 +17,7 @@ class MusaSqrtOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     Tensor* output = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, input.shape(), &output));

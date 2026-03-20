@@ -2,6 +2,7 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -12,6 +13,7 @@ class MusaLog1pOp : public MusaOpKernel {
   explicit MusaLog1pOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

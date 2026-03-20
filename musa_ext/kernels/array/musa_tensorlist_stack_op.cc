@@ -6,6 +6,7 @@
 #include "tensorflow/core/framework/variant.h"
 #include "tensorflow/core/kernels/tensor_list.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -22,6 +23,7 @@ class MusaTensorListStackOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input_handle = ctx->input(0);
     OP_REQUIRES(
         ctx, TensorShapeUtils::IsScalar(input_handle.shape()),

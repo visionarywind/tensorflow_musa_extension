@@ -8,6 +8,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -21,6 +22,7 @@ class MusaConcatOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const int N = ctx->num_inputs() - 1;
     const Tensor& axis_tensor = ctx->input(N);
     int64 axis_val = axis_tensor.scalar<Tidx>()();

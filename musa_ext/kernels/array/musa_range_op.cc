@@ -9,6 +9,7 @@
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/macros.h"
+#include "utils/logging.h"
 
 // ============================================================================
 // MUSA Range custom kernel launcher declarations from musa_range_kernel.mu
@@ -52,6 +53,7 @@ class MusaRangeOp : public OpKernel {
   explicit MusaRangeOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& start_in = ctx->input(0);
     const Tensor& limit_in = ctx->input(1);
     const Tensor& delta_in = ctx->input(2);

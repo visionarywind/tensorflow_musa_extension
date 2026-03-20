@@ -6,6 +6,7 @@
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/util/tensor_bundle/tensor_bundle.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -15,6 +16,7 @@ class MusaSaveV2Op : public OpKernel {
   explicit MusaSaveV2Op(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& prefix = ctx->input(0);
     const Tensor& tensor_names = ctx->input(1);
     const Tensor& shape_and_slices = ctx->input(2);

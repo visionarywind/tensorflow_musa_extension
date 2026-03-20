@@ -7,6 +7,7 @@
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/logging.h"
+#include "utils/logging.h"
 
 extern "C" {
 void LaunchUnsortedSegmentSumFloatInt32(const float* data,
@@ -55,6 +56,7 @@ class UnsortedSegmentSumOp : public OpKernel {
   explicit UnsortedSegmentSumOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& data = ctx->input(0);
     const Tensor& segment_ids = ctx->input(1);
     const Tensor& num_segments_t = ctx->input(2);

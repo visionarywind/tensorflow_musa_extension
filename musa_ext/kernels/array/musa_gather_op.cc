@@ -3,6 +3,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "../utils_op.h"
 #include "../../mu/kernel_register.h"
+#include "utils/logging.h"
 
 // ============================================================================
 // Custom Kernel Launcher Declarations
@@ -86,6 +87,7 @@ class MusaGatherOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
 
     const Tensor& params = ctx->input(0);
     const Tensor& indices = ctx->input(1);

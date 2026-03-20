@@ -5,6 +5,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/util/matmul_bcast.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 #define ENABLE_MUSA_DEBUG 0
 
@@ -53,6 +54,7 @@ class MusaFusedMatMulOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 

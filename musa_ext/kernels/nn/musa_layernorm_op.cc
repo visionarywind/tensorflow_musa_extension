@@ -8,6 +8,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -24,6 +25,7 @@ class MusaLayerNormOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& x = ctx->input(0);
     const Tensor& gamma = ctx->input(1);
     const Tensor& beta = ctx->input(2);

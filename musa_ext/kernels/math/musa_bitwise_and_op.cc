@@ -4,6 +4,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/util/bcast.h"
 #include "tensorflow/core/util/tensor_format.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -28,6 +29,7 @@ class MusaBitwiseAndOp : public MusaOpKernel {
   explicit MusaBitwiseAndOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input_a = ctx->input(0);
     const Tensor& input_b = ctx->input(1);
 

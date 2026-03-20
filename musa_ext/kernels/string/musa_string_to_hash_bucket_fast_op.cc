@@ -20,6 +20,7 @@ limitations under the License.
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/fingerprint.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -38,6 +39,7 @@ class StringToHashBucketFastOp : public OpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor* input_tensor;
     OP_REQUIRES_OK(ctx, ctx->input("input", &input_tensor));
 

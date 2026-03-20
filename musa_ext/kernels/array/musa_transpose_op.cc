@@ -10,6 +10,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/logging.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -25,6 +26,7 @@ class MusaTransposeOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     const Tensor& perm_tensor = ctx->input(1);
     const int dims = input.dims();

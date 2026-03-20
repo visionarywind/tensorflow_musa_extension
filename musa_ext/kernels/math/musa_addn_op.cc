@@ -120,6 +120,7 @@ class MusaAddNOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     AddNCompute<T>(ctx, format_, GetLauncher());
   }
 

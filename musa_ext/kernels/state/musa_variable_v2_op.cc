@@ -6,6 +6,7 @@
 #include "tensorflow/core/framework/resource_var.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -29,6 +30,7 @@ class MusaVariableV2Op : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const DataType dtype = DataTypeToEnum<T>::value;
 
     // Create or lookup the Var resource by (container, shared_name).

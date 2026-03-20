@@ -6,6 +6,7 @@
 #include "tensorflow/core/framework/variant.h"
 #include "tensorflow/core/kernels/tensor_list.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -20,6 +21,7 @@ class MusaTensorListReserveOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& element_shape_tensor = ctx->input(0);
     const Tensor& num_elements_tensor = ctx->input(1);
 

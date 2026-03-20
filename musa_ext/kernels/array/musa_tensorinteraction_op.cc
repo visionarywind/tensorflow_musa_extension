@@ -15,6 +15,7 @@ class MusaInteractOp : public OpKernel {
   explicit MusaInteractOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
 
     OP_REQUIRES(
@@ -82,6 +83,7 @@ REGISTER_KERNEL_BUILDER(
 
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 REGISTER_OP("MusaInteract")

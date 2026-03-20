@@ -2,6 +2,7 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -11,6 +12,7 @@ class MusaLogicalNotOp : public MusaOpKernel {
   explicit MusaLogicalNotOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     OP_REQUIRES(ctx, input.dtype() == DT_BOOL,
                 errors::InvalidArgument("LogicalNot expects bool input, got ",

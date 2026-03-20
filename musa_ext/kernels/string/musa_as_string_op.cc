@@ -23,6 +23,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/macros.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -155,6 +156,7 @@ class MusaAsStringOp : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
 
     // Handle empty tensor

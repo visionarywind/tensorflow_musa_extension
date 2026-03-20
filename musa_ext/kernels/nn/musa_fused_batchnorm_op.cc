@@ -8,6 +8,7 @@
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -29,6 +30,7 @@ class MusaFusedBatchNormOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& x = ctx->input(0);
     const Tensor& scale = ctx->input(1);
     const Tensor& offset = ctx->input(2);
@@ -144,6 +146,7 @@ class MusaFusedBatchNormGradOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& dy = ctx->input(0);
     const Tensor& x = ctx->input(1);
     const Tensor& scale = ctx->input(2);

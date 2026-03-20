@@ -5,6 +5,7 @@
 #include "mu/device/musa_device.h"
 #include "mu/device/musa_memcpy.h"
 #include "mu/device/musa_memset.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -15,6 +16,7 @@ class MusaUniqueOp : public MusaOpKernel {
   explicit MusaUniqueOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     OP_REQUIRES(ctx, input.dims() <= 1,
                 errors::InvalidArgument("Unique expects a 1D vector."));

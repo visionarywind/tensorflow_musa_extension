@@ -8,6 +8,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -21,6 +22,7 @@ class MusaArgMaxOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     const Tensor& axis_tensor = ctx->input(1);
 

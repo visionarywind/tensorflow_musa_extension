@@ -7,6 +7,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/types.h"
+#include "utils/logging.h"
 namespace tensorflow {
 namespace musa {
 
@@ -22,6 +23,7 @@ class MusaAssignOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& value = ctx->input(1);
     ctx->forward_ref_input_to_ref_output(0, 0);
     const bool lock_held = !use_locking_;

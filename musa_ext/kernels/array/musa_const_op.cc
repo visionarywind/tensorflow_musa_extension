@@ -5,6 +5,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/public/version.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -25,6 +26,7 @@ class MusaConstOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     if (cpu_tensor_.NumElements() == 0) {
       Tensor* output = nullptr;
       OP_REQUIRES_OK(ctx,

@@ -7,6 +7,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -19,6 +20,7 @@ class MusaReverseV2Op : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     const Tensor& axis_tensor = ctx->input(1);
     const int dims = input.dims();

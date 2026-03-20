@@ -5,6 +5,7 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/util/tensor_format.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -20,6 +21,7 @@ class MusaBiasAddGradOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& output_backprop = ctx->input(0);
 
     OP_REQUIRES(ctx, output_backprop.dims() >= 1,

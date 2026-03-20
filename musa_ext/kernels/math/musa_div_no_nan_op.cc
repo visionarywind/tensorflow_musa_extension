@@ -6,6 +6,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/util/bcast.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -28,6 +29,7 @@ class MusaDivNoNanOp : public OpKernel {
   explicit MusaDivNoNanOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input_0 = ctx->input(0);
     const Tensor& input_1 = ctx->input(1);
 

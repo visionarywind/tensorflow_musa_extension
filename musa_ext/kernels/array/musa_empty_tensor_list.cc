@@ -1,6 +1,7 @@
 #include "../../utils/musa_tensor_list_utils.h"
 #include "../utils_op.h"
 #include "tensorflow/core/kernels/tensor_list.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -39,6 +40,7 @@ class MusaEmptyTensorListOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& max_num_elements_t = ctx->input(1);
     OP_REQUIRES(
         ctx, TensorShapeUtils::IsScalar(max_num_elements_t.shape()),

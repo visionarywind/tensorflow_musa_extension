@@ -10,6 +10,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/platform/types.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {

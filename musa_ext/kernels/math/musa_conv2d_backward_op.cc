@@ -11,6 +11,7 @@
 #include "tensorflow/core/util/padding.h"
 #include "tensorflow/core/util/tensor_format.h"
 #include "utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -371,6 +372,7 @@ class MusaConv2DBackpropInputOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input_sizes = ctx->input(0);
     const Tensor& filter = ctx->input(1);
     const Tensor& out_backprop = ctx->input(2);
@@ -572,6 +574,7 @@ class MusaConv2DBackpropFilterOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     const Tensor& filter_sizes = ctx->input(1);
     const Tensor& out_backprop = ctx->input(2);

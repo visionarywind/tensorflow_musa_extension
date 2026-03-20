@@ -4,6 +4,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mu/device/musa_memcpy.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +19,7 @@ class MusaAssertOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& cond = ctx->input(0);
     OP_REQUIRES(ctx, TensorShapeUtils::IsScalar(cond.shape()),
                 errors::InvalidArgument("In[0] should be a scalar: ",

@@ -5,6 +5,7 @@
 #include "tensorflow/stream_executor/device_memory.h"
 #include "tensorflow/stream_executor/stream.h"
 #include "utils_op.h"
+#include "utils/logging.h"
 
 extern "C" {
 void LaunchPackKernelFloat(const float** inputs, float* output, int num,
@@ -58,6 +59,7 @@ class MusaPackOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const int num_inputs = ctx->num_inputs();
     const Tensor& first_input = ctx->input(0);
 
@@ -185,6 +187,7 @@ class MusaUnpackOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     int axis = axis_ < 0 ? axis_ + input.dims() : axis_;
     const int num_outputs = input.dim_size(axis);

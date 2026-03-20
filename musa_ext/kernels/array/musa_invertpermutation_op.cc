@@ -3,6 +3,7 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +19,7 @@ class MusaInvertPermutationOp : public MusaOpKernel {
       : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     OP_REQUIRES(ctx, TensorShapeUtils::IsVector(input.shape()),
                 errors::InvalidArgument("input must be a vector"));

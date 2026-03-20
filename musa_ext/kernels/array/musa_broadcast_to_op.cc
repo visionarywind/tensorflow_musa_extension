@@ -8,6 +8,7 @@
 #include "tensorflow/core/framework/tensor_util.h"
 #include "tensorflow/core/util/bcast.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -17,6 +18,7 @@ class MusaBroadcastToOp : public MusaOpKernel {
   explicit MusaBroadcastToOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input_tensor = ctx->input(0);
     const Tensor& shape_tensor = ctx->input(1);
 

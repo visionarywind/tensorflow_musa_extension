@@ -17,6 +17,7 @@
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/util/matmul_bcast.h"
 #include "utils/musa_einsum_op_util.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -681,6 +682,7 @@ class MusaEinsumOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     OpInputList inputs;
     OP_REQUIRES_OK(ctx, ctx->input_list("inputs", &inputs));
 

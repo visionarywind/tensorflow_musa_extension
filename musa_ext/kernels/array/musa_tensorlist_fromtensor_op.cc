@@ -7,6 +7,7 @@
 #include "tensorflow/core/framework/variant.h"
 #include "tensorflow/core/kernels/tensor_list.h"
 #include "tensorflow/core/lib/core/errors.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -69,6 +70,7 @@ class MusaTensorListFromTensorOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     Tensor* output_tensor = nullptr;
     AllocatorAttributes attr;
     attr.set_on_host(true);

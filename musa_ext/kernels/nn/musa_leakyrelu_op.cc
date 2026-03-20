@@ -3,6 +3,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/util/bcast.h"
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +19,7 @@ class MusaLeakyReluOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

@@ -1,4 +1,5 @@
 #include "../utils_op.h"
+#include "utils/logging.h"
 
 namespace tensorflow {
 namespace musa {
@@ -12,6 +13,7 @@ class MusaSliceOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& input = ctx->input(0);
     const Tensor& begin_tensor = ctx->input(1);
     const Tensor& size_tensor = ctx->input(2);
