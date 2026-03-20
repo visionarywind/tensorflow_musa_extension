@@ -53,6 +53,7 @@ static inline mStatus FromMusaError(musaError_t err) {
 mStatus MusaFree(void* ptr) {
   if (ptr) {
     musaError_t err = musaFree(ptr);
+    LOG("ERROR") << "MusaFree: " << ptr;
     return FromMusaError(err);
   }
   return mStatus::SUCCESS;
@@ -60,6 +61,7 @@ mStatus MusaFree(void* ptr) {
 
 mStatus MusaAllocate(size_t size, void** ptr) {
   musaError_t err = musaMalloc(ptr, size);
+  LOG("ERROR") << "MusaAllocate: " << ptr << " " << size;
   return FromMusaError(err);
 }
 
