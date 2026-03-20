@@ -88,6 +88,7 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
   MUSA_KERNEL_TRACE_START("Mem Alloc");
   musaMalloc(reinterpret_cast<void**>(&d_inputs),
              num_inputs * sizeof(const void*));
+  LOG(ERROR) << "Musa malloc: " << *d_inputs << " " << num_inputs * sizeof(void*);
   MUSA_KERNEL_TRACE_END("Mem Alloc");
   MUSA_KERNEL_TRACE_START("Mem Cpy");
   musaMemcpy(const_cast<void**>(d_inputs), input_ptrs.data(),
@@ -103,6 +104,7 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
   MUSA_KERNEL_TRACE_END("Kernel");
 
   musaFree(const_cast<void**>(d_inputs));
+  LOG(ERROR) << "Musa free: " << *d_inputs;
 }
 
 // ============================================================================

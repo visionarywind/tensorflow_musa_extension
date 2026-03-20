@@ -129,6 +129,7 @@ class MusaGatherNdOp : public MusaOpKernel {
     int64_t* d_params_strides = nullptr;
     const size_t strides_bytes = index_depth * sizeof(int64_t);
     musaMalloc(reinterpret_cast<void**>(&d_params_strides), strides_bytes);
+    LOG(ERROR) << "Musa malloc: " << d_params_strides << " " << strides_bytes;
     musaMemcpyAsync(d_params_strides, params_strides.data(), strides_bytes,
                     musaMemcpyHostToDevice, stream);
 
@@ -145,6 +146,7 @@ class MusaGatherNdOp : public MusaOpKernel {
 
     // Free device memory
     musaFree(d_params_strides);
+    LOG(ERROR) << "Musa free: " << d_params_strides;
   }
 
  private:

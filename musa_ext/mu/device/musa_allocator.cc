@@ -37,6 +37,7 @@ MusaBFCAllocator::~MusaBFCAllocator() {
       queue.pop();
       musaSetDevice(device_id_);
       musaFree(ptr);
+      LOG(ERROR) << "Musa free: " << ptr;
     }
   }
   pools_.clear();
@@ -45,6 +46,7 @@ MusaBFCAllocator::~MusaBFCAllocator() {
   for (void* ptr : musa_allocations_) {
     musaSetDevice(device_id_);
     musaFree(ptr);
+    LOG(ERROR) << "Musa free: " << ptr;
   }
 
   VLOG(1) << "MUSA BFC Allocator destroyed. Allocs: " << num_allocs_
@@ -90,6 +92,7 @@ void* MusaBFCAllocator::AllocateRaw(size_t alignment, size_t num_bytes) {
     musaSetDevice(device_id_);
     void* ptr = nullptr;
     musaError_t err = musaMalloc(&ptr, num_bytes);
+    LOG(ERROR) << "Musa malloc: " << ptr << " " << num_bytes;
     if (err != musaSuccess) {
       LOG(ERROR) << "MUSA BFC Allocator: Direct allocation failed for "
                  << num_bytes << " bytes: " << musaGetErrorString(err);
@@ -159,6 +162,7 @@ void* MusaBFCAllocator::AllocateRaw(size_t alignment, size_t num_bytes) {
   musaSetDevice(device_id_);
   ptr = nullptr;
   musaError_t err = musaMalloc(&ptr, size_class);
+  LOG(ERROR) << "Musa malloc: " << ptr << " " << size_class;
   if (err != musaSuccess) {
     LOG(ERROR) << "MUSA BFC Allocator: musaMalloc failed for " << size_class
                << " bytes: " << musaGetErrorString(err);
@@ -226,6 +230,7 @@ void MusaBFCAllocator::DeallocateRaw(void* ptr) {
     // Free directly
     musaSetDevice(device_id_);
     musaFree(ptr);
+    LOG(ERROR) << "Musa free: " << ptr;
     VLOG(2) << "BFCAllocator: Freed direct allocation at " << ptr;
   }
 }

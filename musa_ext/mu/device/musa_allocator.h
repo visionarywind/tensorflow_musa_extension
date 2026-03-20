@@ -135,6 +135,7 @@ class MusaRawAllocator : public Allocator {
 
     void* ptr = nullptr;
     musaError_t err = musaMalloc(&ptr, alloc_bytes);
+    LOG(ERROR) << "Musa malloc: " << ptr << " " << alloc_bytes;
     if (err != musaSuccess) {
       LOG(ERROR) << "MUSA allocator: musaMalloc failed: "
                  << musaGetErrorString(err) << " size: " << alloc_bytes;
@@ -147,6 +148,7 @@ class MusaRawAllocator : public Allocator {
     if (ptr) {
       musaSetDevice(device_id_);
       musaError_t err = musaFree(ptr);
+      LOG(ERROR) << "Musa free: " << ptr;
       if (err != musaSuccess) {
         LOG(ERROR) << "MUSA allocator: musaFree failed: "
                    << musaGetErrorString(err);

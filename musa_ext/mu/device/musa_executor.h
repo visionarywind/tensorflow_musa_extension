@@ -70,6 +70,7 @@ class MusaExecutor : public internal::StreamExecutorInterface {
     if (mem && mem->opaque()) {
       musaSetDevice(device_ordinal_);
       musaError_t err = musaFree(mem->opaque());
+      LOG(ERROR) << "Musa free: " << mem->opaque();
       if (err != musaSuccess) {
         LOG(ERROR) << "MUSA Deallocate failed: " << musaGetErrorString(err);
       }
