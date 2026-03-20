@@ -54,7 +54,7 @@ class MusaSubAllocator : public SubAllocator {
     void* ptr = nullptr;
     musaSetDevice(device_id_);
     musaError_t err = musaMalloc(&ptr, alloc_size);
-    LOG("ERROR") << "MusaAllocate: " << ptr << " " << alloc_size;
+    LOG(ERROR) << "MusaAllocate: " << ptr << " " << alloc_size;
     if (err != musaSuccess) {
       LOG(WARNING) << "MusaSubAllocator: musaMalloc failed for " << alloc_size
                    << " bytes (alignment=" << alignment
@@ -67,7 +67,7 @@ class MusaSubAllocator : public SubAllocator {
       LOG(WARNING) << "MusaSubAllocator: musaMalloc returned unaligned pointer "
                    << ptr << " (requested alignment=" << alignment << ")";
       musaFree(ptr);
-      LOG("ERROR") << "MusaFree: " << ptr;
+      LOG(ERROR) << "MusaFree: " << ptr;
       return nullptr;
     }
 
@@ -86,7 +86,7 @@ class MusaSubAllocator : public SubAllocator {
 
       musaSetDevice(device_id_);
       musaError_t err = musaFree(ptr);
-      LOG("ERROR") << "MusaFree: " << ptr;
+      LOG(ERROR) << "MusaFree: " << ptr;
       if (err != musaSuccess) {
         LOG(ERROR) << "MusaSubAllocator: musaFree failed: "
                    << musaGetErrorString(err);
