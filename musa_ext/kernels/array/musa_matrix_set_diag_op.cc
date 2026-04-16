@@ -36,6 +36,7 @@ class MusaMatrixSetDiagOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "MatrixSet diag";
     const Tensor& input = context->input(0);
     const Tensor& diag = context->input(1);
 

@@ -18,6 +18,7 @@ struct ReduceFunctor {
   static Status Compute(OpKernelContext* ctx, mTensor* output, mTensor* input,
                         ::musa::dnn::Reduce::Mode mode, const int* reduce_dims,
                         int reduce_dim_count, const char* error_prefix) {
+                          LOG(ERROR) << "ReduceFuntor";
     auto& handle = GetHandleByCtx(ctx);
 
     mReduce op;

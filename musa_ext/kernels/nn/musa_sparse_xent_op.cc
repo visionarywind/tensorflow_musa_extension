@@ -15,6 +15,7 @@ class MusaSparseSoftMaxCrossEntroyWithLogitsOp : public MusaOpKernel {
       : MusaOpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
+      LOG(ERROR) << "SparseSofrMaxCrossEntorywithLogits";
     const Tensor& logits = context->input(0);
     const Tensor& labels = context->input(1);
 

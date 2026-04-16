@@ -14,6 +14,7 @@ class MusaZerosLikeOp : public MusaOpKernel {
   explicit MusaZerosLikeOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ZerosLike";
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

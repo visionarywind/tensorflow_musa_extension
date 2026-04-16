@@ -18,6 +18,7 @@ class MusaTileOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "Tile";
     const Tensor& input = context->input(0);
     const Tensor& multiples = context->input(1);
 

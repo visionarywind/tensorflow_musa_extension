@@ -28,6 +28,7 @@ class MusaDivNoNanOp : public OpKernel {
   explicit MusaDivNoNanOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Div no nan called ";
     const Tensor& input_0 = ctx->input(0);
     const Tensor& input_1 = ctx->input(1);
 

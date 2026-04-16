@@ -16,6 +16,7 @@ class MusaMinimumOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Minimum";
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 

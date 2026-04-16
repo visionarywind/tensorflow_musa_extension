@@ -20,6 +20,7 @@ class MusaReshapeOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Reshape";
     const Tensor& input = ctx->input(0);
     const Tensor& sizes = ctx->input(1);
 

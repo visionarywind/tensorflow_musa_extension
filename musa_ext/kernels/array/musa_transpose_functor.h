@@ -9,6 +9,7 @@ struct TransposeFunctor {
   static Status Compute(OpKernelContext* ctx, mTensor& in_mt,
                         const std::vector<int64_t>& permutation,
                         mTensor& out_mt) {
+                          LOG(ERROR) << "TransposeFunctor";
     mHandle& h = GetHandleByCtx(ctx);
 
     ::musa::dnn::Permute pop;

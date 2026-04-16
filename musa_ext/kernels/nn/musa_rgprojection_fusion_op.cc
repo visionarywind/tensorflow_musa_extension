@@ -34,6 +34,7 @@ class MusaBiasAddReluMatMulOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "BiasAddRelutMatMul";
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     const Tensor& input = ctx->input(0);

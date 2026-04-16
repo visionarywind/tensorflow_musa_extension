@@ -64,6 +64,7 @@ class MusaMatMulOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "MatMul called ";
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 

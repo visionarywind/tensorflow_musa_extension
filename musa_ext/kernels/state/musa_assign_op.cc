@@ -22,6 +22,7 @@ class MusaAssignOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "Assign";
     const Tensor& value = ctx->input(1);
     ctx->forward_ref_input_to_ref_output(0, 0);
     const bool lock_held = !use_locking_;

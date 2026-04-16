@@ -66,6 +66,7 @@ class MusaRandomOp : public MusaOpKernel {
   explicit MusaRandomOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "Random";
     const Tensor& shape_t = ctx->input(0);
     const Tensor& seed_t = ctx->input(1);
 

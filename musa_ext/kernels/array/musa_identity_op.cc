@@ -14,6 +14,7 @@ class MusaIdentityOp : public OpKernel {
   explicit MusaIdentityOp(OpKernelConstruction* context) : OpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "Identity";
     int num_outputs = context->num_outputs();
     int num_inputs = context->num_inputs();
 

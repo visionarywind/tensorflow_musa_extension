@@ -39,6 +39,7 @@ class MusaEmptyTensorListOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Empty tensor list called ";
     const Tensor& max_num_elements_t = ctx->input(1);
     OP_REQUIRES(
         ctx, TensorShapeUtils::IsScalar(max_num_elements_t.shape()),

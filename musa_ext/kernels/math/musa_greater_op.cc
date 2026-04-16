@@ -16,6 +16,7 @@ class MusaGreaterOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Greater";
     const Tensor& x = ctx->input(0);
     const Tensor& y = ctx->input(1);
 

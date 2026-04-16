@@ -122,6 +122,7 @@ template <typename T>
 void AddNCompute(OpKernelContext* ctx, mFormat format,
                  void (*launcher)(const T**, InlinePointers, T*, int, int,
                                   musaStream_t)) {
+  LOG(ERROR) << "AddN called";
   MUSA_KERNEL_TIMING_GUARD_WITH_NAME(ctx, "AddN");
   MUSA_KERNEL_TRACE_START("FULL");
 
@@ -167,8 +168,10 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
   // Allocate output tensor
   Tensor* output = nullptr;
   MUSA_KERNEL_TRACE_START("Mem Alloc");
-  OP_REQUIRES_OK(ctx, ctx->forward_input_or_allocate_output(
-                          {0}, 0, output_shape, &output));
+  //OP_REQUIRES_OK(ctx, ctx->forward_input_or_allocate_output(
+  //                        {0}, 0, output_shape, &output));
+  
+  OP_REQUIRES_OK(ctx, ctx->allocate_output(0, output_shape, &output));
   MUSA_KERNEL_TRACE_END("Mem Alloc");
   if (num_elements == 0) return;
 

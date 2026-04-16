@@ -24,6 +24,7 @@ class MusaSoftplusOp : public MusaOpKernel {
 
   bool IsExpensive() override { return true; }
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "Softplus";
     const Tensor& x = ctx->input(0);
 
     Tensor* y = nullptr;

@@ -77,6 +77,7 @@ class MusaGatherNdOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Gather Nd";
     const Tensor& params = ctx->input(0);
     const Tensor& indices = ctx->input(1);
 

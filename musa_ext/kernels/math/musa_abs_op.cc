@@ -15,6 +15,7 @@ class MusaAbsOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Abs";
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

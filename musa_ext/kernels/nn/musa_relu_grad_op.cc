@@ -17,6 +17,7 @@ class MusaReluGradOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "ReluGrad";
     const Tensor& gradients = ctx->input(0);
     const Tensor& features = ctx->input(1);
 

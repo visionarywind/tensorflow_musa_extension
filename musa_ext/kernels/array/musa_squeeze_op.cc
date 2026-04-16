@@ -12,6 +12,7 @@ class MusaSqueezeOp : public OpKernel {
   }
 
   void Compute(OpKernelContext* c) override {
+    LOG(ERROR) << "squeeze";
     const Tensor& input = c->input(0);
 
     TensorShape output_shape;

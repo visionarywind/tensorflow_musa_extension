@@ -284,7 +284,7 @@ class MusaAddOp : public MusaOpKernel {
     MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
-
+    LOG(ERROR) << "Add called";
     TensorShape output_shape;
     const bool same_shape = SameShape(in0.shape(), in1.shape());
     if (same_shape) {
@@ -307,8 +307,10 @@ class MusaAddOp : public MusaOpKernel {
     // the output shape matches input 0.
     MUSA_KERNEL_TRACE_START("Alloc");
     Tensor* out = nullptr;
-    OP_REQUIRES_OK(ctx, ctx->forward_input_or_allocate_output(
-                            {0}, 0, output_shape, &out));
+    //OP_REQUIRES_OK(ctx, ctx->forward_input_or_allocate_output(
+    //                        {0}, 0, output_shape, &out));
+    
+    OP_REQUIRES_OK(ctx, ctx->allocate_output(0, output_shape, &out));
     MUSA_KERNEL_TRACE_END("Alloc");
 
     if (in0.NumElements() == 0 || in1.NumElements() == 0 ||

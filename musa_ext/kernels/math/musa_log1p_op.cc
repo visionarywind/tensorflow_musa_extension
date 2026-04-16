@@ -12,6 +12,7 @@ class MusaLog1pOp : public MusaOpKernel {
   explicit MusaLog1pOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Log1p";
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

@@ -47,6 +47,7 @@ class MusaStridedSliceOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "Strided slice";
     const Tensor& input = context->input(0);
     const int input_dims = input.dims();
 

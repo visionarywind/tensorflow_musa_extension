@@ -19,6 +19,7 @@ class MusaGeluOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Gelu";
     MUSA_KERNEL_TIMING_GUARD_WITH_NAME(ctx, "MusaGelu");
 
     const Tensor& input = ctx->input(0);

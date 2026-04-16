@@ -19,6 +19,7 @@ class MusaCastOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Cast";
     const Tensor& inp = ctx->input(0);
 
     // Zero-copy fast path for identity cast (SrcT == DstT)

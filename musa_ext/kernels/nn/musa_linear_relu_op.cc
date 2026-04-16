@@ -28,6 +28,7 @@ class MusaLinearReluOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "LinearRelu";
     MUSA_KERNEL_TIMING_GUARD(ctx);
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);

@@ -11,6 +11,7 @@ class MusaRsqrtOp : public MusaOpKernel {
   explicit MusaRsqrtOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "Rsqrt";
     const Tensor& input = context->input(0);
     Tensor* output = nullptr;
     OP_REQUIRES_OK(context,
@@ -37,6 +38,7 @@ class MusaRsqrtGradOp : public MusaOpKernel {
   explicit MusaRsqrtGradOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "RsqrtGrad";
     const Tensor& y = context->input(0);
     const Tensor& dy = context->input(1);
 

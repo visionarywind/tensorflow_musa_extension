@@ -15,6 +15,7 @@ class MusaShapeOp : public OpKernel {
   explicit MusaShapeOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Shape";
     const Tensor& input = ctx->input(0);
     const TensorShape& shape = input.shape();
     const int rank = shape.dims();
@@ -35,6 +36,7 @@ class MusaShapeNOp : public OpKernel {
   explicit MusaShapeNOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ShapeN";
     for (int i = 0; i < ctx->num_inputs(); ++i) {
       const Tensor& inp = ctx->input(i);
       const TensorShape& shape = inp.shape();

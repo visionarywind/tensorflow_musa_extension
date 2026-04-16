@@ -38,6 +38,7 @@ class MusaPadOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* context) override {
+    LOG(ERROR) << "PadOp";
     const Tensor& input = context->input(0);
     const Tensor& paddings = context->input(1);
     const int dims = input.dims();

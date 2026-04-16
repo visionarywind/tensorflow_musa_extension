@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include <sstream>
 
 #include "../utils_op.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -84,6 +85,54 @@ namespace musa {
 // Optimized ResourceGather Op Implementation
 // ============================================================================
 
+namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor, const string& name) {
+  // 1. 空张量直接打印
+  if (device_tensor.NumElements() == 0) {
+    LOG(ERROR) << "[" << name << "] Empty Tensor, Shape: " << device_tensor.shape().DebugString();
+    return;
+  }
+
+  // 2. 仅支持FLOAT类型（Adam/Multiply核心类型，可扩展）
+  OP_REQUIRES(ctx, device_tensor.dtype() == DT_FLOAT,
+              errors::InvalidArgument("Dump only supports FLOAT for now"));
+
+  // 3. 创建CPU(Host)张量，用于接收MUSA设备数据
+  Tensor host_tensor;
+  AllocatorAttributes cpu_alloc;
+  cpu_alloc.set_on_host(true); // 强制分配在CPU
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(DT_FLOAT, device_tensor.shape(), &host_tensor, cpu_alloc));
+
+  // 4. 获取MUSA流，执行设备→Host拷贝
+  musaStream_t stream = GetMusaStreamByCtx(ctx);
+  musaError_t err = musaMemcpyAsync(
+      host_tensor.data(),                // Host目标地址
+      device_tensor.data(),              // MUSA设备源地址
+      device_tensor.TotalBytes(),        // 总字节数
+      musaMemcpyDeviceToHost,            // 拷贝方向：MUSA → CPU
+      stream
+  );
+
+  // 5. 同步流，确保拷贝完成
+  musaStreamSynchronize(stream);
+  OP_REQUIRES(ctx, err == musaSuccess,
+              errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
+
+  // 6. 打印关键信息（形状、设备地址、Host地址、前10个数值）
+  const float* host_data = host_tensor.flat<float>().data();
+  LOG(ERROR) << "==================================================";
+  LOG(ERROR) << "Dump Tensor: " << name << ", Shape: " << device_tensor.shape().DebugString() << ", MUSA Device Addr: " << device_tensor.data() << ", Host Addr: " << host_tensor.data();
+  LOG(ERROR) << "Data: ";
+
+  std::stringstream ss;
+  for (int i = 0; i < (int)host_tensor.NumElements(); ++i) {
+    ss << "\t" << host_data[i];
+  }
+  LOG(ERROR) << ss.str();
+  LOG(ERROR) << "==================================================";
+}
+}
+
 template <typename T, typename Index>
 class MusaResourceGatherOp : public MusaOpKernel {
  public:
@@ -94,6 +143,7 @@ class MusaResourceGatherOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* c) override {
+    LOG(ERROR) << "Gather add called ";
     core::RefCountPtr<Var> v;
     Status s = LookupResource(c, HandleFromInput(c, 0), &v);
     if (!s.ok()) {
@@ -219,6 +269,7 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* c) override {
+    LOG(ERROR) << "Scatter add called ";
     core::RefCountPtr<Var> v;
     OP_REQUIRES_OK(c, LookupResource(c, HandleFromInput(c, 0), &v));
     mutex_lock ml(*v->mu());
@@ -263,9 +314,19 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       auto params_mt = CreateMTensor(*params, format_);
       auto indices_mt = CreateMTensor(indices_reshaped, format_);
       auto updates_mt = CreateMTensor(updates, format_);
+
+      DumpMusaTensorToHost(c, indices, "indices");
+      DumpMusaTensorToHost(c, updates, "updates");
+      DumpMusaTensorToHost(c, indices_reshaped, "indices");
+      DumpMusaTensorToHost(c, *params, "params");
+
+      musaStream_t stream = GetMusaStreamByCtx(ctx);
+      musaStreamSynchronize(stream);
       MTOP_CHECK_OK_RUN(
           op.Run(h, params_mt, indices_mt, updates_mt, maintainer),
           "RunScatterND", c);
+      DumpMusaTensorToHost(c, *params, "params");
+
     }
 
     if (c->num_outputs() > 0) {
@@ -286,6 +347,7 @@ class MusaAssignUpdateVariableOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* c) override {
+    LOG(ERROR) << "Assign update add called ";
     core::RefCountPtr<Var> variable;
     OP_REQUIRES_OK(c, LookupResource(c, HandleFromInput(c, 0), &variable));
     mutex_lock ml(*variable->mu());
@@ -316,6 +378,7 @@ class MusaVariableShapeOp : public OpKernel {
  public:
   explicit MusaVariableShapeOp(OpKernelConstruction* c) : OpKernel(c) {}
   void Compute(OpKernelContext* c) override {
+    LOG(ERROR) << "Variable shape called ";
     core::RefCountPtr<Var> v;
     OP_REQUIRES_OK(c, LookupResource(c, HandleFromInput(c, 0), &v));
     tf_shared_lock ml(*v->mu());

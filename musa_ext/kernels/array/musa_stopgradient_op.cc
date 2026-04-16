@@ -15,6 +15,7 @@ class MusaStopGradientOp : public MusaOpKernel {
       : MusaOpKernel(context) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Stop grad";
     const Tensor& input = ctx->input(0);
 
     if (IsRefType(ctx->input_dtype(0))) {

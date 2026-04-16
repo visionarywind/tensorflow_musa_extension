@@ -17,6 +17,7 @@ class MusaSqrtGradOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "SqrtGrad";
     const Tensor& y = ctx->input(0);
     const Tensor& dy = ctx->input(1);
 

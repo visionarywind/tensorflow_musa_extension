@@ -29,6 +29,7 @@ class MusaVariableV2Op : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "VariableV2";
     const DataType dtype = DataTypeToEnum<T>::value;
 
     // Create or lookup the Var resource by (container, shared_name).

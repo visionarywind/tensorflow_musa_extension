@@ -11,6 +11,7 @@ class MusaLogicalNotOp : public MusaOpKernel {
   explicit MusaLogicalNotOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "LogicNot";
     const Tensor& input = ctx->input(0);
     OP_REQUIRES(ctx, input.dtype() == DT_BOOL,
                 errors::InvalidArgument("LogicalNot expects bool input, got ",

@@ -25,6 +25,7 @@ class MusaTransposeOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Transpose";
     const Tensor& input = ctx->input(0);
     const Tensor& perm_tensor = ctx->input(1);
     const int dims = input.dims();

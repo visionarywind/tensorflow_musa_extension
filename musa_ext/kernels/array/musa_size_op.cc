@@ -14,6 +14,7 @@ class MusaSizeOp : public MusaOpKernel {
   explicit MusaSizeOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Size";
     const Tensor& input = ctx->input(0);
 
     const int64_t num_elements = input.NumElements();

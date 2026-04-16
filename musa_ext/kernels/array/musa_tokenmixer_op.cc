@@ -24,6 +24,7 @@ class MusaTokenMixerOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "TokenMixer";
     const Tensor& input = ctx->input(0);
 
     OP_REQUIRES(

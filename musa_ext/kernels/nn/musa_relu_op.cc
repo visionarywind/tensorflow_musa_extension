@@ -17,6 +17,7 @@ class MusaReluOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "Relu";
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

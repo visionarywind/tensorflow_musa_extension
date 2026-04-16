@@ -17,6 +17,7 @@ class MusaMatMulBiasAddOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "MatMulBiasAdd";
     const Tensor& a = ctx->input(0);
     const Tensor& b = ctx->input(1);
     const Tensor& bias = ctx->input(2);

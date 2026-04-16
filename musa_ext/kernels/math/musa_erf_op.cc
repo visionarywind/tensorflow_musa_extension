@@ -68,6 +68,7 @@ class MusaErfOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Erf";
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     const Tensor& input = ctx->input(0);

@@ -236,6 +236,7 @@ class MusaTensorDotOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "TensorDot";
     const Tensor& a = ctx->input(0);
     const Tensor& b = ctx->input(1);
 

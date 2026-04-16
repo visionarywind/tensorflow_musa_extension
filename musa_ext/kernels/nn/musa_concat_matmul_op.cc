@@ -34,6 +34,7 @@ class MusaConcatMatMulOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ConcatMatMul";
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     auto& handle = GetHandleByCtx(ctx);

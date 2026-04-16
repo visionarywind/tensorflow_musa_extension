@@ -24,6 +24,7 @@ class MusaTopKV2Op : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "TopKV2";
     const Tensor& input = ctx->input(0);
     const Tensor& k_tensor = ctx->input(1);
 

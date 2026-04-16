@@ -70,6 +70,7 @@ class MusaVarHandleOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "VarHandle";
     if (is_anonymous_) {
       AllocatorAttributes attr;
       attr.set_on_host(true);
@@ -106,6 +107,7 @@ class MusaAssignVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "AssignVariable";
     const Tensor& value = ctx->input(1);
     OP_REQUIRES(
         ctx, dtype_ == value.dtype(),
@@ -113,9 +115,6 @@ class MusaAssignVariableOp : public OpKernel {
             "Variable and value dtypes don't match; respectively, ",
             DataTypeString(dtype_), " and ", DataTypeString(value.dtype())));
 
-    if (ctx->num_outputs() > 0) {
-      ctx->set_output(0, ctx->input(0));
-    }
 
     core::RefCountPtr<Var> var;
     OP_REQUIRES_OK(ctx, LookupOrCreateResource<Var>(
@@ -127,6 +126,7 @@ class MusaAssignVariableOp : public OpKernel {
                             }));
 
     mutex_lock lock(*var->mu());
+    
 
     OP_REQUIRES(
         ctx,
@@ -154,6 +154,11 @@ class MusaAssignVariableOp : public OpKernel {
     }
 
     var->is_initialized = true;
+
+
+    if (ctx->num_outputs() > 0) {
+      ctx->set_output(0, ctx->input(0));
+    }
   }
 
  private:
@@ -170,6 +175,7 @@ class MusaReadVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "ReadVariable";
     core::RefCountPtr<Var> var;
     const Tensor& handle_tensor = ctx->input(0);
     const ResourceHandle& handle = handle_tensor.flat<ResourceHandle>()(0);
@@ -230,6 +236,7 @@ class MusaVarIsInitializedOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "VarIsInitialized";
     Tensor* out = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({}), &out));
     core::RefCountPtr<Var> var;
@@ -249,6 +256,7 @@ class MusaDestroyResourceOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "DestroyResource";
     Status status = DeleteResource(ctx, HandleFromInput(ctx, 0));
     if (ignore_lookup_error_ && errors::IsNotFound(status)) {
       return;

@@ -13,6 +13,7 @@ class MusaSquaredDifferenceOp : public MusaOpKernel {
       : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "SquaredDifference";
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 

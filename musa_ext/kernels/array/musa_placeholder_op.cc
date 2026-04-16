@@ -12,6 +12,7 @@ class MusaPlaceholderOp : public OpKernel {
   explicit MusaPlaceholderOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Placeholder";
     if (ctx->output_required(0)) {
       ctx->CtxFailure(errors::InvalidArgument(
           "You must feed a value for placeholder tensor '", name(),

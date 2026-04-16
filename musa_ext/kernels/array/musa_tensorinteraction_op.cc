@@ -15,6 +15,7 @@ class MusaInteractOp : public OpKernel {
   explicit MusaInteractOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Interact";
     const Tensor& input = ctx->input(0);
 
     OP_REQUIRES(

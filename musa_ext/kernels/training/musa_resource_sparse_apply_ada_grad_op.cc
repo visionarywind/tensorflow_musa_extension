@@ -48,6 +48,7 @@ class MusaResourceSparseApplyAdaGradV2Op : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Sparse ada grad called ";
     core::RefCountPtr<Var> var;
     OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 0), &var));
     core::RefCountPtr<Var> accum;

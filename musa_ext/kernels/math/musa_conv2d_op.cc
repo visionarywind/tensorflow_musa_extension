@@ -256,6 +256,7 @@ class MusaConv2DOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Conv2D";
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     const Tensor& input = ctx->input(0);

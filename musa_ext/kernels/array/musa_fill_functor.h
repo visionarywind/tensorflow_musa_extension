@@ -48,6 +48,7 @@ struct SetZeroFunctor {
   // Computes on device "d": out = out.setZero(),
   template <typename T>
   inline static Status Compute(OpKernelContext* ctx, mTensor* out_mt) {
+    LOG(ERROR) << "Set zero functor";
     return MusaFillCall<T>(out_mt, T(0), ctx);
   }
 };
@@ -56,6 +57,7 @@ struct SetOneFunctor {
   // Computes on device "d": out = out.setOne(),
   template <typename T>
   inline static Status Compute(OpKernelContext* ctx, mTensor* out_mt) {
+    LOG(ERROR) << "Set one functor";
     return MusaFillCall<T>(out_mt, T(1), ctx);
   }
 };

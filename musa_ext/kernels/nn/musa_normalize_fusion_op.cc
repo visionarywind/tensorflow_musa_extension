@@ -64,6 +64,7 @@ class MusaNormalizeOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+      LOG(ERROR) << "Normalize";
     MUSA_KERNEL_TIMING_GUARD_WITH_NAME(ctx, "MusaNormalize");
 
     const Tensor& x = ctx->input(0);

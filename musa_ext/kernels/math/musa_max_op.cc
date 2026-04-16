@@ -22,6 +22,7 @@ class MusaMaxOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Max";
     const Tensor& input = ctx->input(0);
     const Tensor& axes_tensor = ctx->input(1);
 

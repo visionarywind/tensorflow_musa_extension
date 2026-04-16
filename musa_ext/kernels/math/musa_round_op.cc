@@ -12,6 +12,7 @@ class MusaRoundOp : public MusaOpKernel {
   explicit MusaRoundOp(OpKernelConstruction* context) : MusaOpKernel(context) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Round";
     const Tensor& input = ctx->input(0);
 
     Tensor* output = nullptr;

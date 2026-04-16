@@ -17,6 +17,7 @@ class MusaBroadcastToOp : public MusaOpKernel {
   explicit MusaBroadcastToOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Broadcast to called ";
     const Tensor& input_tensor = ctx->input(0);
     const Tensor& shape_tensor = ctx->input(1);
 
