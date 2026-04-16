@@ -78,6 +78,7 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ApplyAdam called";
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> m;
     core::RefCountPtr<Var> v;
@@ -322,6 +323,7 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
                 errors::Internal("ResourceApplyAdam: musaStreamSynchronize "
                                  "failed: ",
                                  musaGetErrorString(sync_err)));
+    LOG(ERROR) << "ApplyAdam exit";
   }
 
  private:

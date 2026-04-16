@@ -225,6 +225,9 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
     Tensor* params = v->tensor();
     const Tensor& indices = c->input(1);
     const Tensor& updates = c->input(2);
+    //LOG(ERROR) << "Scatter op - indices : " << (indices.data())
+    //           << ", update : " << (updates.data())
+    //           << ", params : " << (params->data());
 
     if (indices.NumElements() > 0) {
       auto& h = GetHandleByCtx(c);
@@ -236,16 +239,26 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       MTOP_CHECK_OK(op.SetMode(mScatterND::Mode::ADD), "SetModeAdd", c);
 
       Tensor indices_reshaped;
-      TensorShape indices_new_shape = indices.shape();
-      indices_new_shape.AddDim(1);
+      const int64 num_indices = indices.NumElements();
+      OP_REQUIRES_OK(c, c->allocate_temp(
+          indices.dtype(),
+          TensorShape({indices.NumElements(), 1}),
+          &indices_reshaped
+      ));
+      const Index* src_ptr = indices.flat<Index>().data();
+      Index* dst_ptr = indices_reshaped.flat<Index>().data();
+      std::memcpy(dst_ptr, src_ptr, num_indices * sizeof(Index));
 
-      if (!indices_reshaped
-               .BitcastFrom(indices, indices.dtype(), indices_new_shape)
-               .ok()) {
-        OP_REQUIRES(c, false,
-                    errors::Internal(
-                        "MusaResourceScatterAdd: Failed to reshape indices."));
-      }
+      //TensorShape indices_new_shape = indices.shape();
+      //indices_new_shape.AddDim(1);
+
+      //if (!indices_reshaped
+      //         .BitcastFrom(indices, indices.dtype(), indices_new_shape)
+      //         .ok()) {
+      //  OP_REQUIRES(c, false,
+      //              errors::Internal(
+      //                  "MusaResourceScatterAdd: Failed to reshape indices."));
+      //}
 
       auto params_mt = CreateMTensor(*params, format_);
       auto indices_mt = CreateMTensor(indices_reshaped, format_);
@@ -256,6 +269,7 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
     }
 
     if (c->num_outputs() > 0) {
+    //  LOG(ERROR) << "Scatter op - input(0) : " << c->input(0).data();
       c->set_output(0, c->input(0));
     }
   }

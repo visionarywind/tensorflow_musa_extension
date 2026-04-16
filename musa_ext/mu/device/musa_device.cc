@@ -11,6 +11,7 @@
 #include "musa_memset.h"
 #include "tensorflow/core/common_runtime/bfc_allocator.h"
 #include "tensorflow/core/framework/device_base.h"
+#include "tensorflow/core/framework/tensor_reference.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/stream_executor/multi_platform_manager.h"
 
@@ -57,6 +58,8 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
   const void* src = cpu_tensor->tensor_data().data();
   void* dst = const_cast<char*>(device_tensor->tensor_data().data());
   size_t bytes = cpu_tensor->TotalBytes();
+
+  // LOG(ERROR) << "h2d operation - device addr : " << dst << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
 
   if (bytes == 0) {
     done(Status::OK());
@@ -208,11 +211,12 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
   const void* src = device_tensor->tensor_data().data();
   void* dst = const_cast<char*>(cpu_tensor->tensor_data().data());
   size_t bytes = device_tensor->TotalBytes();
+  // LOG(ERROR) << "d2h operation - device addr : " << src << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
 
   if (bytes > cpu_tensor->TotalBytes()) {
     bytes = cpu_tensor->TotalBytes();
   }
-  if (bytes == 0) {
+  if (bytes == 0 or src == nullptr) {
     done(Status::OK());
     return;
   }
@@ -228,34 +232,33 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
     musaGetLastError();
   }
 
-  if (is_pinned) {
-    // Fast path: async copy to pinned memory
-    musaEvent_t compute_done_event;
-    musaEventCreateWithFlags(&compute_done_event, musaEventDisableTiming);
-    musaEventRecord(compute_done_event, stream_handle_);
-    MUSA_TELEMETRY_ON_EVENT_RECORD(compute_done_event,
-                                   MUSA_TELEMETRY_STREAM_ID(stream_handle_),
-                                   device_id);
-    musaStreamWaitEvent(d2h_stream_, compute_done_event, 0);
-    MUSA_TELEMETRY_ON_EVENT_WAIT(
-        compute_done_event, MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
-        MUSA_TELEMETRY_STREAM_ID(stream_handle_), device_id);
-    // CRITICAL FIX: Defer event destruction until the waiting stream completes.
-    // musaStreamWaitEvent() is asynchronous - the wait command is queued but
-    // may not have executed when this function returns. Destroying the event
-    // immediately can cause the wait to be ignored, leading to race conditions
-    // and dirty data.
-    if (event_mgr_) {
-      event_mgr_->ThenExecute(d2h_stream_, [compute_done_event, device_id]() {
-        musaSetDevice(device_id);
-        musaEventDestroy(compute_done_event);
-      });
-    } else {
-      // Fallback: synchronize before destroy (conservative)
-      musaStreamSynchronize(d2h_stream_);
+  // Fast path: async copy to pinned memory
+  musaEvent_t compute_done_event;
+  musaEventCreateWithFlags(&compute_done_event, musaEventDisableTiming);
+  musaEventRecord(compute_done_event, stream_handle_);
+  MUSA_TELEMETRY_ON_EVENT_RECORD(
+      compute_done_event, MUSA_TELEMETRY_STREAM_ID(stream_handle_), device_id);
+  musaStreamWaitEvent(d2h_stream_, compute_done_event, 0);
+  MUSA_TELEMETRY_ON_EVENT_WAIT(
+      compute_done_event, MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
+      MUSA_TELEMETRY_STREAM_ID(stream_handle_), device_id);
+  // CRITICAL FIX: Defer event destruction until the waiting stream completes.
+  // musaStreamWaitEvent() is asynchronous - the wait command is queued but
+  // may not have executed when this function returns. Destroying the event
+  // immediately can cause the wait to be ignored, leading to race conditions
+  // and dirty data.
+  if (event_mgr_) {
+    event_mgr_->ThenExecute(d2h_stream_, [compute_done_event, device_id]() {
+      musaSetDevice(device_id);
       musaEventDestroy(compute_done_event);
-    }
+    });
+  } else {
+    // Fallback: synchronize before destroy (conservative)
+    musaStreamSynchronize(d2h_stream_);
+    musaEventDestroy(compute_done_event);
+  }
 
+  if (is_pinned) {
     MUSA_TELEMETRY_ON_MEMCPY(dst, const_cast<void*>(src), bytes, device_id,
                              MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
                              TelemetryEventType::kMemcpyD2H);
@@ -267,7 +270,9 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
     }
 
     if (event_mgr_) {
-      event_mgr_->ThenExecute(d2h_stream_, [device_id, done]() {
+      TensorReference input_ref(*device_tensor);
+      event_mgr_->ThenExecute(d2h_stream_, [device_id, done, input_ref]() {
+        input_ref.Unref();
         musaSetDevice(device_id);
         done(Status::OK());
       });
@@ -302,33 +307,6 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
       return;
     }
 
-    // Wait for compute stream before starting D2H copy
-    musaEvent_t compute_done_event;
-    musaEventCreateWithFlags(&compute_done_event, musaEventDisableTiming);
-    musaEventRecord(compute_done_event, stream_handle_);
-    MUSA_TELEMETRY_ON_EVENT_RECORD(compute_done_event,
-                                   MUSA_TELEMETRY_STREAM_ID(stream_handle_),
-                                   device_id);
-    musaStreamWaitEvent(d2h_stream_, compute_done_event, 0);
-    MUSA_TELEMETRY_ON_EVENT_WAIT(
-        compute_done_event, MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
-        MUSA_TELEMETRY_STREAM_ID(stream_handle_), device_id);
-    // CRITICAL FIX: Defer event destruction until the waiting stream completes.
-    // musaStreamWaitEvent() is asynchronous - the wait command is queued but
-    // may not have executed when this function returns. Destroying the event
-    // immediately can cause the wait to be ignored, leading to race conditions
-    // and dirty data.
-    if (event_mgr_) {
-      event_mgr_->ThenExecute(d2h_stream_, [compute_done_event, device_id]() {
-        musaSetDevice(device_id);
-        musaEventDestroy(compute_done_event);
-      });
-    } else {
-      // Fallback: synchronize before destroy (conservative)
-      musaStreamSynchronize(d2h_stream_);
-      musaEventDestroy(compute_done_event);
-    }
-
     // Stage 1: Async copy from GPU to pinned
     MUSA_TELEMETRY_ON_MEMCPY(bounce_buffer, const_cast<void*>(src), bytes,
                              device_id, MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
@@ -347,13 +325,15 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
     // Stage 2: Copy from pinned to pageable (CPU-side)
     // FreeAsync ensures bounce_buffer is returned to pool after GPU copy
     // completes
+    TensorReference input_ref(*device_tensor);
     if (event_mgr_) {
       event_mgr_->ThenExecute(d2h_stream_, [musa_dev, device_id, dst,
-                                            bounce_buffer, bytes, done]() {
+                                            bounce_buffer, bytes, done, input_ref]() {
         musaSetDevice(device_id);
         std::memcpy(dst, bounce_buffer, bytes);
         musa_dev->pinned_memory_pool()->FreeAsync(bounce_buffer, bytes,
                                                   nullptr);
+        input_ref.Unref();
         done(Status::OK());
       });
     } else {
@@ -363,6 +343,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
       done(Status::OK());
     }
   }
+  musaStreamSynchronize(d2h_stream_);
 }
 
 MusaDevice::MusaDevice(Env* env, const DeviceAttributes& attributes,

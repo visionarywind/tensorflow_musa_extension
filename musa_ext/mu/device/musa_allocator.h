@@ -335,6 +335,7 @@ class MusaSubAllocator : public SubAllocator {
     void* ptr = nullptr;
     musaSetDevice(device_id_);
     musaError_t err = musaMalloc(&ptr, alloc_size);
+    LOG(ERROR) << "malloc ptr : " << ptr << ", size : " << alloc_size;
     if (err != musaSuccess) {
       LOG(WARNING) << "MusaSubAllocator: musaMalloc failed for " << alloc_size
                    << " bytes (alignment=" << alignment
