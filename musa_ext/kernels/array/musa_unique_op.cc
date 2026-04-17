@@ -27,11 +27,11 @@ class MusaUniqueOp : public MusaOpKernel {
       return;
     }
 
-    Tensor* temp_out_values;
+    Tensor temp_out_values;
     Tensor* temp_out_indices;
     Tensor temp_counts;
-    OP_REQUIRES_OK(ctx,
-                   ctx->allocate_output(0, input.shape(), &temp_out_values));
+    OP_REQUIRES_OK(ctx, ctx->allocate_temp(DataTypeToEnum<OutIdxT>::value,
+                                           input.shape(), &temp_out_values));
     OP_REQUIRES_OK(ctx,
                    ctx->allocate_output(1, input.shape(), &temp_out_indices));
     OP_REQUIRES_OK(ctx, ctx->allocate_temp(DataTypeToEnum<OutIdxT>::value,
@@ -52,7 +52,7 @@ class MusaUniqueOp : public MusaOpKernel {
     auto maintainer = musa_device->GetMemMaintainer(mem_alloc_func);
 
     ::musa::dnn::Tensor t_in = CreateMTensor(input);
-    ::musa::dnn::Tensor t_out_val = CreateMTensor(*temp_out_values);
+    ::musa::dnn::Tensor t_out_val = CreateMTensor(temp_out_values);
     ::musa::dnn::Tensor t_out_indices = CreateMTensor(*temp_out_indices);
     ::musa::dnn::Tensor t_counts = CreateMTensor(temp_counts);
 
@@ -66,8 +66,13 @@ class MusaUniqueOp : public MusaOpKernel {
     auto& handle = GetHandleByCtx(ctx);
     op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
-    TensorShape new_shape({temp_counts.flat<OutIdxT>().data()[0]});
-    temp_out_values->BitcastFrom(*temp_out_values, temp_out_values->dtype(), new_shape);
+    Tensor* out_values = nullptr;
+    auto out_value_size = temp_counts.flat<OutIdxT>().data()[0];
+    OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({out_value_size}),
+                                             &out_values));
+    musaMemcpyAsync(output_values->data(), temp_out_values.data(),
+                    out_value_size * sizeof(T), musaMemcpyDeviceToDevice,
+                    GetMusaStreamByCtx(ctx));
   }
 };
 
