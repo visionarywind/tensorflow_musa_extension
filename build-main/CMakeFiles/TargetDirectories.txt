@@ -1,0 +1,3 @@
+/data/mochi/tensorflow_musa_extension/build/CMakeFiles/musa_plugin.dir
+/data/mochi/tensorflow_musa_extension/build/CMakeFiles/edit_cache.dir
+/data/mochi/tensorflow_musa_extension/build/CMakeFiles/rebuild_cache.dir
