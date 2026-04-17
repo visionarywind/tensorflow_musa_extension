@@ -67,8 +67,7 @@ class MusaUniqueOp : public MusaOpKernel {
     op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
     TensorShape new_shape({temp_counts.flat<OutIdxT>().data()[0]});
-    Tensor reshaped_tensor(temp_out_values->dtype(), new_shape, temp_out_values->buf_);
-    ctx->set_output(0, reshaped_tensor);
+    temp_out_values.BitcastFrom(*temp_out_values, temp_out_values->dtype(), new_shape);
   }
 };
 
