@@ -59,7 +59,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
   void* dst = const_cast<char*>(device_tensor->tensor_data().data());
   size_t bytes = cpu_tensor->TotalBytes();
 
-  // LOG(ERROR) << "h2d operation - device addr : " << dst << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
+  LOG(ERROR) << "h2d operation - device addr : " << dst << ", src : " << src << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
 
   if (bytes == 0) {
     done(Status::OK());
@@ -102,6 +102,10 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
             << "Caller MUST ensure proper synchronization before kernel reads. "
             << "dst=" << dst << " bytes=" << bytes;
   }
+
+  musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
+  done(Status::OK());
+  return;
 
   // Check if source memory is pinned (musaMemoryTypeHost)
   musaPointerAttributes attributes;
@@ -211,7 +215,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
   const void* src = device_tensor->tensor_data().data();
   void* dst = const_cast<char*>(cpu_tensor->tensor_data().data());
   size_t bytes = device_tensor->TotalBytes();
-  // LOG(ERROR) << "d2h operation - device addr : " << src << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
+  LOG(ERROR) << "d2h operation - device addr : " << src << ", cpu : " << dst << ", bytes : " << bytes << ", stream : " << musa_dev->GetStream();
 
   if (bytes > cpu_tensor->TotalBytes()) {
     bytes = cpu_tensor->TotalBytes();
@@ -257,6 +261,10 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
     musaStreamSynchronize(d2h_stream_);
     musaEventDestroy(compute_done_event);
   }
+
+  musaMemcpy(dst, src, bytes, musaMemcpyDeviceToHost);
+  done(Status::OK());
+  return;
 
   if (is_pinned) {
     MUSA_TELEMETRY_ON_MEMCPY(dst, const_cast<void*>(src), bytes, device_id,

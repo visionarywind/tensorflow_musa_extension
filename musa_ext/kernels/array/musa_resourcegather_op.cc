@@ -89,47 +89,74 @@ namespace {
 void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor, const string& name) {
   // 1. 空张量直接打印
   if (device_tensor.NumElements() == 0) {
-    LOG(ERROR) << "[" << name << "] Empty Tensor, Shape: " << device_tensor.shape().DebugString();
+    LOG(ERROR) << "[Dump] " << name << " | Empty Tensor | Shape: " << device_tensor.shape().DebugString();
     return;
   }
 
-  // 2. 仅支持FLOAT类型（Adam/Multiply核心类型，可扩展）
-  OP_REQUIRES(ctx, device_tensor.dtype() == DT_FLOAT,
-              errors::InvalidArgument("Dump only supports FLOAT for now"));
+  // 2. 记录类型、形状、设备地址（关键调试信息）
+  // const DataType dtype = DataTypeToEnum<T>::value
+  const DataType dtype = device_tensor.dtype();
+  LOG(ERROR) << "==================================================";
+  LOG(ERROR) << "[Dump] " << name 
+             << " | Type: " << DataTypeString(dtype)
+             << " | Shape: " << device_tensor.shape().DebugString()
+             << " | Device Addr: " << device_tensor.data();
 
-  // 3. 创建CPU(Host)张量，用于接收MUSA设备数据
+  // 3. 创建对应类型的 CPU 张量
   Tensor host_tensor;
   AllocatorAttributes cpu_alloc;
-  cpu_alloc.set_on_host(true); // 强制分配在CPU
-  OP_REQUIRES_OK(ctx, ctx->allocate_temp(DT_FLOAT, device_tensor.shape(), &host_tensor, cpu_alloc));
+  cpu_alloc.set_on_host(true);  // 强制分配在 CPU
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(dtype, device_tensor.shape(), &host_tensor, cpu_alloc));
 
-  // 4. 获取MUSA流，执行设备→Host拷贝
+  // 4. MUSA 设备 -> CPU 拷贝（通用，和类型无关）
   musaStream_t stream = GetMusaStreamByCtx(ctx);
   musaError_t err = musaMemcpyAsync(
-      host_tensor.data(),                // Host目标地址
-      device_tensor.data(),              // MUSA设备源地址
-      device_tensor.TotalBytes(),        // 总字节数
-      musaMemcpyDeviceToHost,            // 拷贝方向：MUSA → CPU
+      host_tensor.data(),
+      device_tensor.data(),
+      device_tensor.TotalBytes(),
+      musaMemcpyDeviceToHost,
       stream
   );
-
-  // 5. 同步流，确保拷贝完成
   musaStreamSynchronize(stream);
   OP_REQUIRES(ctx, err == musaSuccess,
               errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
 
-  // 6. 打印关键信息（形状、设备地址、Host地址、前10个数值）
-  const float* host_data = host_tensor.flat<float>().data();
-  LOG(ERROR) << "==================================================";
-  LOG(ERROR) << "Dump Tensor: " << name << ", Shape: " << device_tensor.shape().DebugString() << ", MUSA Device Addr: " << device_tensor.data() << ", Host Addr: " << host_tensor.data();
-  LOG(ERROR) << "Data: ";
-
+  // 5. ====================== 核心：根据类型打印数据 ======================
   std::stringstream ss;
-  for (int i = 0; i < (int)host_tensor.NumElements(); ++i) {
-    ss << "\t" << host_data[i];
+  ss << "Data: ";
+  const int64_t num_elems = host_tensor.NumElements();
+
+  switch (dtype) {
+    case DT_INT32: {  // indices 最常用类型
+      const int32* data = host_tensor.flat<int32>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_INT64: {  // MUSA 要求的索引类型
+      const int64* data = host_tensor.flat<int64>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_FLOAT: {  // params / updates
+      const float* data = host_tensor.flat<float>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unsupported dtype: " << DataTypeString(dtype);
+      return;
+    }
   }
+
+  // 6. 打印完整数据
   LOG(ERROR) << ss.str();
-  LOG(ERROR) << "==================================================";
+  LOG(ERROR) << "==================================================\n";
 }
 }
 
@@ -317,16 +344,15 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
 
       DumpMusaTensorToHost(c, indices, "indices");
       DumpMusaTensorToHost(c, updates, "updates");
-      DumpMusaTensorToHost(c, indices_reshaped, "indices");
+      DumpMusaTensorToHost(c, indices_reshaped, "indices_reshaped");
       DumpMusaTensorToHost(c, *params, "params");
 
-      musaStream_t stream = GetMusaStreamByCtx(ctx);
+      musaStream_t stream = GetMusaStreamByCtx(c);
       musaStreamSynchronize(stream);
       MTOP_CHECK_OK_RUN(
           op.Run(h, params_mt, indices_mt, updates_mt, maintainer),
           "RunScatterND", c);
       DumpMusaTensorToHost(c, *params, "params");
-
     }
 
     if (c->num_outputs() > 0) {
