@@ -4,6 +4,7 @@
 #include <cmath>
 #include <list>
 #include <vector>
+#include <thread>
 
 #include "../array/musa_fill_functor.h"
 #include "../utils_op.h"
@@ -78,7 +79,8 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
-    LOG(ERROR) << "ApplyAdam called";
+    LOG(ERROR) << "ApplyAdam called " << std::this_thread::get_id();
+
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> m;
     core::RefCountPtr<Var> v;
@@ -323,7 +325,7 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
                 errors::Internal("ResourceApplyAdam: musaStreamSynchronize "
                                  "failed: ",
                                  musaGetErrorString(sync_err)));
-    LOG(ERROR) << "ApplyAdam exit";
+    LOG(ERROR) << "ApplyAdam exit " << std::this_thread::get_id();
   }
 
  private:

@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include <thread>
 
 #include "../utils_op.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -212,6 +213,118 @@ DEFINE_RESOURCE_GATHER_LAUNCHER_HALF(int64, LaunchResourceGatherHalfInt64)
 // ResourceScatterAdd Op (keeps muDNN for atomic operations)
 // ============================================================================
 
+namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
+                          const string& name) {
+  if (device_tensor.NumElements() == 0) {
+    LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
+               << " | Empty Tensor | Shape: "
+               << device_tensor.shape().DebugString();
+    return;
+  }
+
+  std::stringstream ss;
+  const DataType dtype = device_tensor.dtype();
+  ss << std::this_thread::get_id()
+     << "=================================================="
+     << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
+     << " | Shape: " << device_tensor.shape().DebugString()
+     << " | Device Addr: " << device_tensor.data();
+
+  Tensor host_tensor;
+  AllocatorAttributes cpu_alloc;
+  cpu_alloc.set_on_host(true);
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(dtype, device_tensor.shape(),
+                                         &host_tensor, cpu_alloc));
+
+  musaStream_t stream = GetMusaStreamByCtx(ctx);
+  musaError_t err = musaMemcpyAsync(host_tensor.data(), device_tensor.data(),
+                                    device_tensor.TotalBytes(),
+                                    musaMemcpyDeviceToHost, stream);
+  musaStreamSynchronize(stream);
+  OP_REQUIRES(
+      ctx, err == musaSuccess,
+      errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
+
+  const int64_t num_elems = host_tensor.NumElements();
+
+  ss << "\t" <<std::this_thread::get_id() << "\n\tData:";
+  switch (dtype) {
+    case DT_INT32: {
+      int mn = INT_MAX, mx = INT_MIN;
+      const int32* data = host_tensor.flat<int32>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        // ss << data[i] << "\t";
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
+      }
+      ss << "min : " << mn << ", mx : " << mx;
+      break;
+    }
+    case DT_INT64: {
+      int64 mn = INT64_MIN, mx = INT64_MAX;
+      const int64* data = host_tensor.flat<int64>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        // ss << data[i] << "\t";
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
+      }
+      ss << "min : " << mn << ", mx : " << mx;
+      break;
+    }
+    case DT_FLOAT: {
+      const float* data = host_tensor.flat<float>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unsupported dtype: " << DataTypeString(dtype);
+      return;
+    }
+  }
+
+  LOG(ERROR) << ss.str();
+}
+}  // namespace
+
+namespace {
+mType GetType(DataType t) {
+  switch (t) {
+    case DataType::DT_FLOAT:
+      return mType::FLOAT;
+    case DataType::DT_DOUBLE:
+      return mType::DOUBLE;
+    case DataType::DT_INT32:
+      return mType::INT32;
+    case DataType::DT_UINT8:
+      return mType::UINT8;
+    case DataType::DT_INT16:
+      return mType::INT16;
+    case DataType::DT_INT8:
+      return mType::INT8;
+    case DataType::DT_INT64:
+      return mType::INT64;
+    case DataType::DT_BFLOAT16:
+      return mType::BFLOAT16;
+    case DataType::DT_UINT16:
+      return mType::UINT16;
+    case DataType::DT_HALF:
+      return mType::HALF;
+    case DataType::DT_UINT32:
+      return mType::UINT32;
+    case DataType::DT_UINT64:
+      return mType::UINT64;
+    case DataType::DT_BOOL:
+      return mType::BOOL;
+    default:
+      CHECK(false);
+      throw;
+  }
+}
+}  // namespace
+
 template <typename T, typename Index>
 class MusaResourceScatterAddOp : public MusaOpKernel {
  public:
@@ -228,6 +341,7 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
     //LOG(ERROR) << "Scatter op - indices : " << (indices.data())
     //           << ", update : " << (updates.data())
     //           << ", params : " << (params->data());
+    // DumpMusaTensorToHost(c, indices, "indices");
 
     if (indices.NumElements() > 0) {
       auto& h = GetHandleByCtx(c);
@@ -238,16 +352,16 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       mScatterND op;
       MTOP_CHECK_OK(op.SetMode(mScatterND::Mode::ADD), "SetModeAdd", c);
 
-      Tensor indices_reshaped;
-      const int64 num_indices = indices.NumElements();
-      OP_REQUIRES_OK(c, c->allocate_temp(
-          indices.dtype(),
-          TensorShape({indices.NumElements(), 1}),
-          &indices_reshaped
-      ));
-      const Index* src_ptr = indices.flat<Index>().data();
-      Index* dst_ptr = indices_reshaped.flat<Index>().data();
-      std::memcpy(dst_ptr, src_ptr, num_indices * sizeof(Index));
+      // Tensor indices_reshaped;
+      // const int64 num_indices = indices.NumElements();
+      // OP_REQUIRES_OK(c, c->allocate_temp(
+      //     indices.dtype(),
+      //     TensorShape({indices.NumElements(), 1}),
+      //     &indices_reshaped
+      // ));
+      // const Index* src_ptr = indices.flat<Index>().data();
+      // Index* dst_ptr = indices_reshaped.flat<Index>().data();
+      // std::memcpy(dst_ptr, src_ptr, num_indices * sizeof(Index));
 
       //TensorShape indices_new_shape = indices.shape();
       //indices_new_shape.AddDim(1);
@@ -261,16 +375,30 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       //}
 
       auto params_mt = CreateMTensor(*params, format_);
-      auto indices_mt = CreateMTensor(indices_reshaped, format_);
+      auto create_mtensor = [](const Tensor& t, mFormat format) {
+        mTensor rst;
+        rst.SetAddr(const_cast<void*>(static_cast<const void*>(t.tensor_data().data())));
+        rst.SetType(GetType(t.dtype()));
+        
+        auto dims_raw = t.shape().dim_sizes();
+        const int rank = static_cast<int>(dims_raw.size());
+        if (rank >= 4) {
+          rst.SetFormat(format);
+        } else {
+          rst.SetFormat(mFormat::NCHW);
+        }
+
+        rst.SetNdInfo({static_cast<int64_t>(rank), static_cast<int64_t>(1)});
+        return rst;
+      };
+      auto indices_mt = create_mtensor(indices, format_);
+      // indices_mt.SetNdInfo({static_cast<int64_t>(indices.shape().dim_sizes().size()), {static_cast<int64_t>(1)});
+
+      //DumpMusaTensorToHost(c, indices, "indices");
       auto updates_mt = CreateMTensor(updates, format_);
       MTOP_CHECK_OK_RUN(
           op.Run(h, params_mt, indices_mt, updates_mt, maintainer),
           "RunScatterND", c);
-    }
-
-    if (c->num_outputs() > 0) {
-    //  LOG(ERROR) << "Scatter op - input(0) : " << c->input(0).data();
-      c->set_output(0, c->input(0));
     }
   }
 };
