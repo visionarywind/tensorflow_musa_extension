@@ -27,8 +27,8 @@ class MusaUniqueOp : public MusaOpKernel {
       return;
     }
 
-    Tensor *temp_out_values;
-    Tensor *temp_out_indices;
+    Tensor* temp_out_values;
+    Tensor* temp_out_indices;
     Tensor temp_counts;
     OP_REQUIRES_OK(ctx,
                    ctx->allocate_output(0, input.shape(), &temp_out_values));
@@ -66,7 +66,7 @@ class MusaUniqueOp : public MusaOpKernel {
     auto& handle = GetHandleByCtx(ctx);
     op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
-    OP_REQUIRES_OK(ctx, temp_out_values->Reshape({temp_counts.flat<OutIdxT>().data()[0])});
+    OP_REQUIRES_OK(ctx, temp_out_values->Reshape(TensorShape({temp_counts.flat<OutIdxT>().data()[0])})));
   }
 };
 

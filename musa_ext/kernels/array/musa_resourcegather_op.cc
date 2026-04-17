@@ -237,7 +237,8 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
 
       auto params_mt = CreateMTensor(*params, format_);
       auto indices_mt = CreateMTensor(indices, format_);
-      indices_mt.SetNdInfo({static_castint64_t>(indices.shape().dim_sizes().size()), 1LL});
+      indices_mt.SetNdInfo(
+          {static_cast<int64_t>(indices.shape().dim_sizes().size()), 1LL});
       auto updates_mt = CreateMTensor(updates, format_);
       MTOP_CHECK_OK_RUN(
           op.Run(h, params_mt, indices_mt, updates_mt, maintainer),
