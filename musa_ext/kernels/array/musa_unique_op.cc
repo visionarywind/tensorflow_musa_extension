@@ -63,6 +63,7 @@ class MusaUniqueOp : public MusaOpKernel {
       ctx->SetStatus(errors::Internal("Unique SetMode failed"));
       return;
     }
+    auto& handle = GetHandleByCtx(ctx);
     op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
     OP_REQUIRES_OK(ctx, temp_out_values->Reshape({temp_counts.flat<OutIdxT>().data()[0])});
