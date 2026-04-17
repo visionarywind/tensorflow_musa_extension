@@ -235,20 +235,10 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       mScatterND op;
       MTOP_CHECK_OK(op.SetMode(mScatterND::Mode::ADD), "SetModeAdd", c);
 
-      Tensor indices_reshaped;
-      TensorShape indices_new_shape = indices.shape();
-      indices_new_shape.AddDim(1);
-
-      if (!indices_reshaped
-               .BitcastFrom(indices, indices.dtype(), indices_new_shape)
-               .ok()) {
-        OP_REQUIRES(c, false,
-                    errors::Internal(
-                        "MusaResourceScatterAdd: Failed to reshape indices."));
-      }
-
       auto params_mt = CreateMTensor(*params, format_);
-      auto indices_mt = CreateMTensor(indices_reshaped, format_);
+      auto indices_mt = CreateMTensor(indices, format_);
+      indices_mt.SetNdInfo(
+          {static_cast<int64_t>(indices.shape().dim_sizes().size()), 1LL});
       auto updates_mt = CreateMTensor(updates, format_);
       MTOP_CHECK_OK_RUN(
           op.Run(h, params_mt, indices_mt, updates_mt, maintainer),
