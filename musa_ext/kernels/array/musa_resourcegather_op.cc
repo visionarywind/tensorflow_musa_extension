@@ -296,7 +296,7 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* c) override {
-    LOG(ERROR) << "Scatter add called ";
+    LOG(ERROR) << "Scatter add called - input size : " << num_inputs() << ", output num : " << num_outputs();
     core::RefCountPtr<Var> v;
     OP_REQUIRES_OK(c, LookupResource(c, HandleFromInput(c, 0), &v));
     mutex_lock ml(*v->mu());
@@ -342,10 +342,10 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
       auto indices_mt = CreateMTensor(indices_reshaped, format_);
       auto updates_mt = CreateMTensor(updates, format_);
 
+      DumpMusaTensorToHost(c, *params, "params");
       DumpMusaTensorToHost(c, indices, "indices");
       DumpMusaTensorToHost(c, updates, "updates");
       DumpMusaTensorToHost(c, indices_reshaped, "indices_reshaped");
-      DumpMusaTensorToHost(c, *params, "params");
 
       musaStream_t stream = GetMusaStreamByCtx(c);
       musaStreamSynchronize(stream);

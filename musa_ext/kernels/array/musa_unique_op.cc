@@ -68,6 +68,7 @@ class MusaUniqueOp : public MusaOpKernel {
   explicit MusaUniqueOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "Unique op - input nums : " << num_inputs() << ", output num : " << num_outputs();
     const Tensor& input = ctx->input(0);
     DumpMusaTensorToHost(ctx, input, "input");
     OP_REQUIRES(ctx, input.dims() <= 1,
@@ -91,7 +92,8 @@ class MusaUniqueOp : public MusaOpKernel {
     OP_REQUIRES_OK(ctx, ctx->allocate_temp(input.dtype(), input.shape(), &temp_out_values));
     OP_REQUIRES_OK(ctx, ctx->allocate_temp(DataTypeToEnum<OutIdxT>::value, input.shape(), &temp_out_indices));
     OP_REQUIRES_OK(ctx, ctx->allocate_temp(DataTypeToEnum<OutIdxT>::value, input.shape(), &temp_counts));
-
+    musaMemsetAsync(temp_counts.data(), 0, temp_counts.TotalBytes(), stream);
+    musaStreamSynchronize(stream);
     std::vector<Tensor> workspace_tensors;
     auto mem_alloc_func = [ctx, &workspace_tensors](size_t size) -> ::musa::dnn::MemoryHandler {
       if (size == 0) return nullptr;
@@ -116,6 +118,11 @@ class MusaUniqueOp : public MusaOpKernel {
     }
     mStatus status = op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
+
+    DumpMusaTensorToHost(ctx, temp_out_values, "temp_out_values");
+    DumpMusaTensorToHost(ctx, temp_out_indices, "temp_out_indices");
+    DumpMusaTensorToHost(ctx, temp_counts, "temp_counts");
+
     musaStreamSynchronize(stream);
     if (status != ::musa::dnn::Status::SUCCESS) {
       ctx->SetStatus(errors::Internal("muDNN Unique Run failed"));
@@ -133,18 +140,15 @@ class MusaUniqueOp : public MusaOpKernel {
       num_unique++;
     }
 
-    // 分配最终输出张量
     Tensor* out_values = nullptr;
     Tensor* out_indices = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({num_unique}), &out_values));
     OP_REQUIRES_OK(ctx, ctx->allocate_output(1, input.shape(), &out_indices));
 
-    // 只拷贝有效数据，无脏数据
     musaMemcpyAsync(out_values->data(), temp_out_values.data(),
                     num_unique * sizeof(T), musaMemcpyDeviceToDevice, stream);
     musaMemcpyAsync(out_indices->data(), temp_out_indices.data(),
                     input_num * sizeof(OutIdxT), musaMemcpyDeviceToDevice, stream);
-    musaStreamSynchronize(stream);
 
     // 打印结果
     DumpMusaTensorToHost(ctx, *out_values, "unique_values");
