@@ -57,7 +57,7 @@ class MusaUniqueOp : public MusaOpKernel {
     }
     op.Run(handle, t_out_val, t_out_indices, t_counts, t_in, maintainer);
 
-    temp_out_values.set_shape(temp_counts.flat<OutIdxT>().data()[0]);
+    OP_REQUIRES_OK(ctx, temp_out_values.Reshape({temp_counts.flat<OutIdxT>().data()[0])});
     ctx->set_output(0, temp_out_values);
     ctx->set_output(1, temp_out_indices);
   }
