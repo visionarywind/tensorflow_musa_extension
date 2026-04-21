@@ -5,6 +5,7 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/resource_mgr.h"
 #include "tensorflow/core/framework/resource_var.h"
+#include "tensorflow/core/framework/tensor_reference.h"
 #include "tensorflow/core/lib/core/notification.h"
 
 namespace tensorflow {
@@ -207,6 +208,10 @@ class MusaReadVariableOp : public OpKernel {
       musaStream_t stream = GetMusaStreamByCtx(ctx);
       MusaMemcpyAsyncD2D(const_cast<char*>(out->tensor_data().data()),
                          t.tensor_data().data(), t.TotalBytes(), stream);
+      TensorReference input_ref(t);
+      MusaDeviceContext *musa_device_context =
+          static_cast<MusaDeviceContext*>(ctx->op_device_context());
+      musa_device_context->ThenExecute(stream, [input_ref]() { input_ref.Unref(); });
     }
   }
 
