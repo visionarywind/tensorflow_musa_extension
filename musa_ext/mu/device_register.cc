@@ -81,6 +81,8 @@ class MusaDeviceFactory : public DeviceFactory {
   }
 };
 
+std::vector<tensorflow::musa::MusaDevice*> MusaDeviceFactory::musa_devices_;
+
 REGISTER_LOCAL_DEVICE_FACTORY("MUSA", MusaDeviceFactory, 210);
 
 }  // namespace musa
