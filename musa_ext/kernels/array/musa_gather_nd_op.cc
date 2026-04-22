@@ -144,7 +144,7 @@ class MusaGatherNdOp : public MusaOpKernel {
         stream);
 
     // Free device memory
-    GetDeviceByCtx(ctx)->event_mgr().ThenExecute(
+    GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(
         stream, [d_params_strides]() { musaFree(d_params_strides); });
   }
 

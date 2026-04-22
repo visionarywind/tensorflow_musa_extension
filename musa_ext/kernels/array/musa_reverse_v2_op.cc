@@ -90,7 +90,7 @@ class MusaReverseV2Op : public MusaOpKernel {
       musaMemcpyAsync(idx_tensor.data(), idx_host.data(),
                       axis_size * sizeof(int32), musaMemcpyHostToDevice,
                       stream);
-      GetDeviceByCtx(ctx)->event_mgr().ThenExecute(stream, [&idx_host]() {});
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [&idx_host]() {});
 
       auto in_mt = CreateMTensor(src);
       auto out_mt = CreateMTensor(*dst);
@@ -107,7 +107,7 @@ class MusaReverseV2Op : public MusaOpKernel {
     if (axes_to_reverse.size() > 1 && axes_to_reverse.size() % 2 == 0) {
       musaMemcpyAsync(output->data(), tmp.data(), tmp.TotalBytes(),
                       musaMemcpyDeviceToDevice, stream);
-      GetDeviceByCtx(ctx)->event_mgr().ThenExecute(stream, [tmp]() {});
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [tmp]() {});
     }
   }
 };
