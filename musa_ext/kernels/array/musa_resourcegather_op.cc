@@ -246,22 +246,28 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
   ss << std::this_thread::get_id() << "\n\tData:";
   switch (dtype) {
     case DT_INT32: {
+      int32 mn = INT_MAX, mx = INT_MIN;
       const int32* data = host_tensor.flat<int32>().data();
       for (int64_t i = 0; i < num_elems; ++i) {
-        ss << data[i] << "\t";
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
       }
+      ss << "min - " << mn << ", max - " << mx << "\t";
       break;
     }
     case DT_INT64: {
+      int64_t mn = INT64_MAX, mx = INT64_MIN;
       const int64* data = host_tensor.flat<int64>().data();
       for (int64_t i = 0; i < num_elems; ++i) {
-        ss << data[i] << "\t";
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
       }
+      ss << "min - " << mn << ", max - " << mx << "\t";
       break;
     }
     case DT_FLOAT: {
       const float* data = host_tensor.flat<float>().data();
-      for (int64_t i = 0; i < num_elems; ++i) {
+      for (int64_t i = 0; i < std::max(100, num_elems); ++i) {
         ss << data[i] << "\t";
       }
       break;
