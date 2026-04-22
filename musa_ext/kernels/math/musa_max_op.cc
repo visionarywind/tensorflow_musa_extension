@@ -25,6 +25,8 @@ class MusaMaxOp : public MusaOpKernel {
     const Tensor& input = ctx->input(0);
     const Tensor& axes_tensor = ctx->input(1);
 
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+
     const int rank = input.dims();
     const int64_t num_axes = axes_tensor.NumElements();
 
