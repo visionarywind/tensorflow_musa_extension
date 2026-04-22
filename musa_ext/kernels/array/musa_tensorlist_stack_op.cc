@@ -175,7 +175,8 @@ class MusaTensorListStackOp : public MusaOpKernel {
           errors::Internal("musaMemcpyAsync failed in TensorListStack, error "
                            "code: ",
                            static_cast<int>(err)));
-      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [*src_tensor]() { });
+      auto input_tensor = *src_tensor;
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [input_tensor]() { });
       offset_elems += src_tensor->NumElements();
     }
   }

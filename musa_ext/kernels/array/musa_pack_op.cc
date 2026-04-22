@@ -114,7 +114,8 @@ class MusaPackOp : public MusaOpKernel {
       OP_REQUIRES(ctx, err == musaSuccess,
                   errors::Internal("musaMemcpyAsync failed: ",
                                    musaGetErrorString(err)));
-      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [ctx->input(0)]() { });
+      auto input_tensor = ctx->input(0);
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [input_tensor]() { });
       SyncPackStreamIfNeeded(ctx, stream, NeedsHostVisiblePackSync<T>());
       return;
     }
