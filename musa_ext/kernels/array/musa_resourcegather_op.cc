@@ -208,6 +208,74 @@ DEFINE_RESOURCE_GATHER_LAUNCHER_HALF(int64, LaunchResourceGatherHalfInt64)
 #undef DEFINE_RESOURCE_GATHER_LAUNCHER
 #undef DEFINE_RESOURCE_GATHER_LAUNCHER_HALF
 
+namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
+                          const string& name) {
+  if (device_tensor.NumElements() == 0) {
+    LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
+               << " | Empty Tensor | Shape: "
+               << device_tensor.shape().DebugString();
+    return;
+  }
+
+  std::stringstream ss;
+  const DataType dtype = device_tensor.dtype();
+  ss << std::this_thread::get_id()
+     << "=================================================="
+     << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
+     << " | Shape: " << device_tensor.shape().DebugString()
+     << " | Device Addr: " << device_tensor.data();
+
+  Tensor host_tensor;
+  AllocatorAttributes cpu_alloc;
+  cpu_alloc.set_on_host(true);
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(dtype, device_tensor.shape(),
+                                         &host_tensor, cpu_alloc));
+
+  musaStream_t stream = GetMusaStreamByCtx(ctx);
+  musaError_t err = musaMemcpyAsync(host_tensor.data(), device_tensor.data(),
+                                    device_tensor.TotalBytes(),
+                                    musaMemcpyDeviceToHost, stream);
+  musaStreamSynchronize(stream);
+  OP_REQUIRES(
+      ctx, err == musaSuccess,
+      errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
+
+  const int64_t num_elems = host_tensor.NumElements();
+
+  ss << std::this_thread::get_id() << "\n\tData:";
+  switch (dtype) {
+    case DT_INT32: {
+      const int32* data = host_tensor.flat<int32>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_INT64: {
+      const int64* data = host_tensor.flat<int64>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_FLOAT: {
+      const float* data = host_tensor.flat<float>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unsupported dtype: " << DataTypeString(dtype);
+      return;
+    }
+  }
+
+  LOG(ERROR) << ss.str();
+}
+}  // namespace 
+
 // ============================================================================
 // ResourceScatterAdd Op (keeps muDNN for atomic operations)
 // ============================================================================
@@ -224,6 +292,9 @@ class MusaResourceScatterAddOp : public MusaOpKernel {
     Tensor* params = v->tensor();
     const Tensor& indices = c->input(1);
     const Tensor& updates = c->input(2);
+
+    DumpMusaTensorToHost(c, indices, "indices");
+    DumpMusaTensorToHost(c, updates, "updates");
 
     if (indices.NumElements() > 0) {
       auto& h = GetHandleByCtx(c);

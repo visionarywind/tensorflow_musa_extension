@@ -8,6 +8,74 @@
 
 namespace tensorflow {
 namespace musa {
+  namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
+                          const string& name) {
+  if (device_tensor.NumElements() == 0) {
+    LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
+               << " | Empty Tensor | Shape: "
+               << device_tensor.shape().DebugString();
+    return;
+  }
+
+  std::stringstream ss;
+  const DataType dtype = device_tensor.dtype();
+  ss << std::this_thread::get_id()
+     << "=================================================="
+     << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
+     << " | Shape: " << device_tensor.shape().DebugString()
+     << " | Device Addr: " << device_tensor.data();
+
+  Tensor host_tensor;
+  AllocatorAttributes cpu_alloc;
+  cpu_alloc.set_on_host(true);
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(dtype, device_tensor.shape(),
+                                         &host_tensor, cpu_alloc));
+
+  musaStream_t stream = GetMusaStreamByCtx(ctx);
+  musaError_t err = musaMemcpyAsync(host_tensor.data(), device_tensor.data(),
+                                    device_tensor.TotalBytes(),
+                                    musaMemcpyDeviceToHost, stream);
+  musaStreamSynchronize(stream);
+  OP_REQUIRES(
+      ctx, err == musaSuccess,
+      errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
+
+  const int64_t num_elems = host_tensor.NumElements();
+
+  ss << std::this_thread::get_id() << "\n\tData:";
+  switch (dtype) {
+    case DT_INT32: {
+      const int32* data = host_tensor.flat<int32>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_INT64: {
+      const int64* data = host_tensor.flat<int64>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    case DT_FLOAT: {
+      const float* data = host_tensor.flat<float>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        ss << data[i] << "\t";
+      }
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unsupported dtype: " << DataTypeString(dtype);
+      return;
+    }
+  }
+
+  LOG(ERROR) << ss.str();
+}
+}  // namespace 
+
 template <typename T, typename OutIdxT>
 class MusaUniqueOp : public MusaOpKernel {
  public:
@@ -65,6 +133,10 @@ class MusaUniqueOp : public MusaOpKernel {
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({num_unique}), &out_values));
     musaMemcpyAsync(out_values->data(), temp_out_values.data(),
                     num_unique * sizeof(T), musaMemcpyDeviceToDevice, stream);
+
+    DumpMusaTensorToHost(ctx, out_values, "out_values");
+    DumpMusaTensorToHost(ctx, *temp_out_indices, "*temp_out_indices");
+    DumpMusaTensorToHost(ctx, temp_out_values, "temp_out_values");
     GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [temp_out_values]() { });
   }
 };
