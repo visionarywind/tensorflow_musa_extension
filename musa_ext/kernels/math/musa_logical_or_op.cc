@@ -83,6 +83,7 @@ class MusaLogicalBinaryOp : public MusaOpKernel {
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
     bool handled = false;
     OP_REQUIRES_OK(ctx,
                    MaybeHandleScalarLogicalShortcut<mode>(ctx, in0, in1,
