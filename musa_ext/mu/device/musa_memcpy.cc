@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "mu/device/musa_telemetry.h"
+#include "mu/device_register.h"
 
 namespace tensorflow {
 namespace musa {
@@ -12,7 +13,7 @@ namespace musa {
 static musaStream_t GetSynchronousStream() {
   // Use the default stream (0) for synchronous operations
   // This ensures proper synchronization without creating extra streams
-  return 0;
+  return GetMusaDevice()[0]->GetStream();
 }
 
 mStatus MusaMemcpyD2H(void* h, const void* d, size_t size) {

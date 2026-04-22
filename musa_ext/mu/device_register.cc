@@ -11,6 +11,10 @@
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow/stream_executor/multi_platform_manager.h"
 
+std::vector<MusaDevice*> GetMusaDevices() {
+  return tensorflow::musa::MusaDeviceFactory::musa_devices_;
+}
+
 namespace tensorflow {
 void ForceMusaOptimizationPassRegistration();
 }
@@ -20,6 +24,7 @@ namespace musa {
 
 class MusaDeviceFactory : public DeviceFactory {
  public:
+  static std::vector<MusaDevice*> musa_devices_;
   Status ListPhysicalDevices(std::vector<string>* devices) override {
     int count = 0;
     musaError_t err = musaGetDeviceCount(&count);
@@ -72,8 +77,9 @@ class MusaDeviceFactory : public DeviceFactory {
       }
       auto* executor = executor_status.ValueOrDie();
 
-      devices->push_back(std::unique_ptr<Device>(
-          new MusaDevice(Env::Default(), attr, i, executor)));
+      auto musa_device = new MusaDevice(Env::Default(), attr, i, executor);
+      musa_devices_.push_back(musa_device);
+      devices->push_back(std::unique_ptr<Device>(musa_device));
     }
     return Status::OK();
   }

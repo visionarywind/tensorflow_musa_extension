@@ -1,8 +1,12 @@
 #ifndef TENSORFLOW_MUSA_MU1_DEVICE_REGISTER_H_
 #define TENSORFLOW_MUSA_MU1_DEVICE_REGISTER_H_
 
+#include <vector>
+
 #include "tensorflow/c/experimental/stream_executor/stream_executor.h"
 #include "tensorflow/c/tf_status.h"
+
+#include "device/musa_device.h"
 
 extern const char NAME_MTGPU[];
 #define DEVICE_MTGPU "MUSA"
@@ -35,6 +39,8 @@ void plugin_destroy_platform_fns(SP_PlatformFns* platform_fns);
 
 void SE_InitPlugin(SE_PlatformRegistrationParams* const params,
                    TF_Status* const status);
+
+std::vector<MusaDevice*> GetMusaDevices();
 
 #ifdef __cplusplus
 }
