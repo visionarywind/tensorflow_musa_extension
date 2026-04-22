@@ -40,6 +40,7 @@ Status CopyTensorForUpdate(OpKernelContext* ctx, const Tensor& src,
     return errors::Internal("CopyTensorForUpdate: musaMemcpyAsync failed: ",
                             musaGetErrorString(err));
   }
+  GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [src]() {});
 
   return Status::OK();
 }
