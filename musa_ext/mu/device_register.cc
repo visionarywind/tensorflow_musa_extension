@@ -11,10 +11,6 @@
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow/stream_executor/multi_platform_manager.h"
 
-std::vector<tensorflow::musa::MusaDevice*> GetMusaDevices() {
-  return tensorflow::musa::MusaDeviceFactory::musa_devices_;
-}
-
 namespace tensorflow {
 void ForceMusaOptimizationPassRegistration();
 }
@@ -91,6 +87,10 @@ REGISTER_LOCAL_DEVICE_FACTORY("MUSA", MusaDeviceFactory, 210);
 }  // namespace tensorflow
 
 extern "C" {
+std::vector<tensorflow::musa::MusaDevice*> GetMusaDevices() {
+  return tensorflow::musa::MusaDeviceFactory::musa_devices_;
+}
+
 void __attribute__((constructor)) OnMusaPluginLoad() {
   // Initialize telemetry system from environment variables
   auto config = ::tensorflow::musa::TelemetryConfig::FromEnv();

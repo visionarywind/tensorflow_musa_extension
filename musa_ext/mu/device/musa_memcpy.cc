@@ -13,7 +13,7 @@ namespace musa {
 static musaStream_t GetSynchronousStream() {
   // Use the default stream (0) for synchronous operations
   // This ensures proper synchronization without creating extra streams
-  return GetMusaDevice()[0]->GetStream();
+  return GetMusaDevices()[0]->GetStream();
 }
 
 mStatus MusaMemcpyD2H(void* h, const void* d, size_t size) {
