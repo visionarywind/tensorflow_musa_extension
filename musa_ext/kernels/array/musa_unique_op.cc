@@ -51,6 +51,7 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
       for (int64_t i = 0; i < num_elems; ++i) {
         mn = std::min(mn, data[i]);
         mx = std::max(mx, data[i]);
+        ss << data[i] << "\t";
       }
       ss << "min - " << mn << ", max - " << mx << "\t";
       break;
@@ -61,6 +62,7 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
       for (int64_t i = 0; i < num_elems; ++i) {
         mn = std::min(mn, data[i]);
         mx = std::max(mx, data[i]);
+        ss << data[i] << "\t";
       }
       ss << "min - " << mn << ", max - " << mx << "\t";
       break;
@@ -144,6 +146,7 @@ class MusaUniqueOp : public MusaOpKernel {
     musaMemcpyAsync(out_values->data(), temp_out_values.data(),
                     num_unique * sizeof(T), musaMemcpyDeviceToDevice, stream);
 
+    DumpMusaTensorToHost(ctx, input, "input");
     DumpMusaTensorToHost(ctx, *out_values, "out_values");
     DumpMusaTensorToHost(ctx, *temp_out_indices, "*temp_out_indices");
     DumpMusaTensorToHost(ctx, temp_out_values, "temp_out_values");
