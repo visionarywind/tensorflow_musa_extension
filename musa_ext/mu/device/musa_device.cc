@@ -118,7 +118,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
                              MUSA_TELEMETRY_STREAM_ID(h2d_stream_),
                              TelemetryEventType::kMemcpyH2D);
     musaError_t err =
-        musaMemcpyAsync(dst, src, bytes, musaMemcpyHostToDevice, h2d_stream_);
+        musaMemcpyAsync(dst, src, bytes, musaMemcpyHostToDevice, stream_handle_);
     if (err != musaSuccess) {
       done(errors::Internal("MUSA H2D async copy failed"));
       return;
@@ -171,7 +171,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
                              MUSA_TELEMETRY_STREAM_ID(h2d_stream_),
                              TelemetryEventType::kMemcpyH2D);
     musaError_t err = musaMemcpyAsync(dst, bounce_buffer, bytes,
-                                      musaMemcpyHostToDevice, h2d_stream_);
+                                      musaMemcpyHostToDevice, stream_handle_);
     if (err != musaSuccess) {
       LOG(ERROR) << "MUSA H2D async copy failed: " << musaGetErrorString(err)
                  << " dst=" << dst << " bounce_buffer=" << bounce_buffer
@@ -260,7 +260,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
                              MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
                              TelemetryEventType::kMemcpyD2H);
     musaError_t err =
-        musaMemcpyAsync(dst, src, bytes, musaMemcpyDeviceToHost, d2h_stream_);
+        musaMemcpyAsync(dst, src, bytes, musaMemcpyDeviceToHost, stream_handle_);
     if (err != musaSuccess) {
       done(errors::Internal("MUSA D2H async copy failed"));
       return;
@@ -309,7 +309,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
                              device_id, MUSA_TELEMETRY_STREAM_ID(d2h_stream_),
                              TelemetryEventType::kMemcpyD2H);
     musaError_t err = musaMemcpyAsync(bounce_buffer, src, bytes,
-                                      musaMemcpyDeviceToHost, d2h_stream_);
+                                      musaMemcpyDeviceToHost, stream_handle_);
     if (err != musaSuccess) {
       LOG(ERROR) << "MUSA D2H async copy failed: " << musaGetErrorString(err)
                  << " bounce_buffer=" << bounce_buffer << " src=" << src
