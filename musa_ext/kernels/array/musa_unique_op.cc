@@ -65,6 +65,7 @@ class MusaUniqueOp : public MusaOpKernel {
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({num_unique}), &out_values));
     musaMemcpyAsync(out_values->data(), temp_out_values.data(),
                     num_unique * sizeof(T), musaMemcpyDeviceToDevice, stream);
+    GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [temp_out_values]() { });
   }
 };
 

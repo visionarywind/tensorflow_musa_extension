@@ -114,6 +114,7 @@ class MusaPackOp : public MusaOpKernel {
       OP_REQUIRES(ctx, err == musaSuccess,
                   errors::Internal("musaMemcpyAsync failed: ",
                                    musaGetErrorString(err)));
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [ctx->input(0)]() { });
       SyncPackStreamIfNeeded(ctx, stream, NeedsHostVisiblePackSync<T>());
       return;
     }
@@ -261,6 +262,7 @@ class MusaUnpackOp : public MusaOpKernel {
         OP_REQUIRES(ctx, err == musaSuccess,
                     errors::Internal("musaMemcpyAsync failed for output ", i,
                                      ": ", musaGetErrorString(err)));
+        GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [input]() { });
       }
       return;
     }

@@ -105,11 +105,11 @@ class MusaBitwiseAndOp : public MusaOpKernel {
       auto* d_a_strides = d_a_strides_t.flat<int64_t>().data();
       auto* d_b_strides = d_b_strides_t.flat<int64_t>().data();
 
-      musaMemcpyAsync(d_output_shape, h_output_shape, ndims * sizeof(int64_t),
+      musaMemcpy(d_output_shape, h_output_shape, ndims * sizeof(int64_t),
                       musaMemcpyHostToDevice, stream);
-      musaMemcpyAsync(d_a_strides, h_a_strides, ndims * sizeof(int64_t),
+      musaMemcpy(d_a_strides, h_a_strides, ndims * sizeof(int64_t),
                       musaMemcpyHostToDevice, stream);
-      musaMemcpyAsync(d_b_strides, h_b_strides, ndims * sizeof(int64_t),
+      musaMemcpy(d_b_strides, h_b_strides, ndims * sizeof(int64_t),
                       musaMemcpyHostToDevice, stream);
 
       MusaBitwiseAndBroadcastKernelLauncher<T>(
