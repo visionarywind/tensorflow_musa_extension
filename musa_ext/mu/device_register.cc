@@ -11,7 +11,7 @@
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow/stream_executor/multi_platform_manager.h"
 
-std::vector<MusaDevice*> GetMusaDevices() {
+std::vector<tensorflow::musa::MusaDevice*> GetMusaDevices() {
   return tensorflow::musa::MusaDeviceFactory::musa_devices_;
 }
 
@@ -24,7 +24,7 @@ namespace musa {
 
 class MusaDeviceFactory : public DeviceFactory {
  public:
-  static std::vector<MusaDevice*> musa_devices_;
+  static std::vector<tensorflow::musa::MusaDevice*> musa_devices_;
   Status ListPhysicalDevices(std::vector<string>* devices) override {
     int count = 0;
     musaError_t err = musaGetDeviceCount(&count);

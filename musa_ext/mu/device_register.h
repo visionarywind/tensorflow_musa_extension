@@ -40,7 +40,7 @@ void plugin_destroy_platform_fns(SP_PlatformFns* platform_fns);
 void SE_InitPlugin(SE_PlatformRegistrationParams* const params,
                    TF_Status* const status);
 
-std::vector<MusaDevice*> GetMusaDevices();
+std::vector<tensorflow::musa::MusaDevice*> GetMusaDevices();
 
 #ifdef __cplusplus
 }
