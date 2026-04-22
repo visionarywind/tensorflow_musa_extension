@@ -56,7 +56,6 @@ class MusaConstOp : public OpKernel {
         OP_REQUIRES(ctx, err == musaSuccess,
                     errors::Internal("MUSA Const H2D Memcpy failed: ",
                                      musaGetErrorString(err)));
-        GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [cpu_tensor_, gpu_tensor_]() { });
         initialized_ = true;
       }
     }
