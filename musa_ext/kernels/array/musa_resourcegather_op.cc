@@ -267,7 +267,7 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
     }
     case DT_FLOAT: {
       const float* data = host_tensor.flat<float>().data();
-      for (int64_t i = 0; i < std::max(100, num_elems); ++i) {
+      for (int64_t i = 0; i < std::max((int64_t)100, num_elems); ++i) {
         ss << data[i] << "\t";
       }
       break;
