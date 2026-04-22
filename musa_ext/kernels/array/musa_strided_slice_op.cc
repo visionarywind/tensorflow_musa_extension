@@ -74,7 +74,7 @@ class MusaStridedSliceOp : public OpKernel {
             output->flat<T>().data(), input.flat<T>().data(),
             input.TotalBytes(), musaMemcpyDeviceToDevice,
             reinterpret_cast<musaStream_t>(h.GetStream()));
-        GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(h.GetStream(), [input]() {});
+        GetDeviceByCtx(context)->event_mgr()->ThenExecute(h.GetStream(), [input]() {});
         OP_REQUIRES(context, err == musaSuccess,
                     errors::Internal("MUSA StridedSlice memcpy failed: ",
                                      musaGetErrorString(err)));
