@@ -69,6 +69,7 @@ class MusaConcatOp : public MusaOpKernel {
                                          musaGetErrorString(err)));
         return;
       }
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [src]() { });
       return;
     }
 

@@ -145,7 +145,7 @@ class MusaGatherNdOp : public MusaOpKernel {
 
     // Free device memory
     GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(
-        stream, [d_params_strides]() { musaFree(d_params_strides); });
+        stream, [d_params_strides, &params_strides]() { musaFree(d_params_strides); });
   }
 
  private:
