@@ -138,6 +138,7 @@ class MusaTensorListFromTensorOp : public MusaOpKernel {
 
         auto err =
             musaMemcpyAsync(dst, src, bytes, musaMemcpyDeviceToDevice, stream);
+        GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [tmp]() {});
 
         OP_REQUIRES(
             ctx, err == musaSuccess,
