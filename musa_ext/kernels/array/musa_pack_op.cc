@@ -230,6 +230,7 @@ class MusaUnpackOp : public MusaOpKernel {
       OP_REQUIRES(ctx, err == musaSuccess,
                   errors::Internal("musaMemcpyAsync failed: ",
                                    musaGetErrorString(err)));
+      GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [input]() { });
       return;
     }
 
