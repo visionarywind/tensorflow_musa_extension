@@ -18,7 +18,7 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
   if (device_tensor.TensorData().is_host_memory()) {
     LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
-               << " | Host Addr: " << device_tensor.data();
+               << " | Host Addr: " << device_tensor.data() << ", dtype : "<< DataTypeString(device_tensor.dtype());
     return;
   }
   
