@@ -8,8 +8,8 @@
 
 namespace tensorflow {
 namespace musa {
-namespace{
-  void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
+namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
   if (device_tensor.NumElements() == 0) {
     LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
