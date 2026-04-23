@@ -79,7 +79,7 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
-    LOG(ERROR) << "ResourceApplyAdamOp is called."
+    LOG(ERROR) << "ResourceApplyAdamOp is called.";
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> m;
     core::RefCountPtr<Var> v;
