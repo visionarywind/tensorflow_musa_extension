@@ -52,8 +52,10 @@ class MusaConstOp : public OpKernel {
         // OP_REQUIRES_OK(
         //     ctx, ctx->allocate_temp(cpu_tensor_.dtype(), cpu_tensor_.shape(),
         //                             &gpu_tensor_, attr));
+      Tensor *tmp_tensor = nullptr;
       OP_REQUIRES_OK(
-            ctx, ctx->allocate_output(0, cpu_tensor_.shape(), &&gpu_tensor_));
+            ctx, ctx->allocate_output(0, cpu_tensor_.shape(), &tmp_tensor));
+      gpu_tensor_ = *tmp_tensor;
 
         auto& handle = GetHandleByCtx(ctx);
         musaStream_t stream =
