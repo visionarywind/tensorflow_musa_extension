@@ -17,6 +17,7 @@ namespace musa {
   namespace {
 void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
+  const DataType dtype = device_tensor.dtype();
   LOG(ERROR) << "=================================================="
      << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
      << " | Shape: " << device_tensor.shape().DebugString()
@@ -30,7 +31,6 @@ void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
   }
 
   std::stringstream ss;
-  const DataType dtype = device_tensor.dtype();
   ss << std::this_thread::get_id()
      << "=================================================="
      << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
