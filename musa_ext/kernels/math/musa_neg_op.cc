@@ -8,7 +8,7 @@
 
 namespace tensorflow {
 namespace musa {
-
+namespace{
   void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
   if (device_tensor.NumElements() == 0) {
