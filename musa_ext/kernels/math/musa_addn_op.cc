@@ -231,10 +231,10 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
     return;
   }
 
-  for (int i = 0; i < num_inputs; ++i) {
-    const Tensor& input = ctx->input(i);
-    DumpMusaTensorToHost(ctx, input, "Input " + std::to_string(i));
-  }
+  // for (int i = 0; i < num_inputs; ++i) {
+  //   const Tensor& input = ctx->input(i);
+  //   DumpMusaTensorToHost(ctx, input, "Input " + std::to_string(i));
+  // }
 
   // ==========================================================================
   // STEP 1: Calculate Broadcasted Output Shape
@@ -347,9 +347,17 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
 
     // 1. Zero-initialize output
     // MusaZeroMemoryAsync uses MusaMemcpyAsyncH2D which returns mStatus
-    mStatus memset_status =
-        MusaZeroMemoryAsync(const_cast<char*>(output->tensor_data().data()),
-                            output->TotalBytes(), stream);
+    size_t size = output->TotalBytes();
+    char *ptr = const_cast<char*>(output->tensor_data().data());
+    std::vector<char> zeros(size, 0);
+    // MusaMemcpyAsyncH2D is confirmed to return mStatus by the compiler error
+    // context
+    auto memset_status = MusaMemcpyAsyncH2D(ptr, zeros.data(), size, stream);
+    GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [&zeros]() {});
+
+    // mStatus memset_status =
+    //     MusaZeroMemoryAsync(const_cast<char*>(output->tensor_data().data()),
+    //                         output->TotalBytes(), stream);
     OP_REQUIRES(ctx, memset_status == mStatus::SUCCESS,
                 errors::Internal(
                     "MUSA AddN broadcast fallback: failed to zero output."));
