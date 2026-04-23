@@ -177,7 +177,7 @@ class MusaVarHandleOp : public OpKernel {
           std::vector<DtypeAndPartialTensorShape>{dtype_and_shape_},
           ctx->stack_trace());
       ctx->set_output(0, handle);
-      DumpMusaTensorToHost(ctx, handle, "handle");
+      // DumpMusaTensorToHost(ctx, handle, "handle");
     } else {
       ctx->set_output(0, resource_);
     }
