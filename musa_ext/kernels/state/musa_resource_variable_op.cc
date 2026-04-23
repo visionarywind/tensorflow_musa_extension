@@ -170,6 +170,7 @@ class MusaVarHandleOp : public OpKernel {
           std::vector<DtypeAndPartialTensorShape>{dtype_and_shape_},
           ctx->stack_trace());
       ctx->set_output(0, handle);
+      DumpMusaTensorToHost(ctx, handle, "handle");
     } else {
       ctx->set_output(0, resource_);
     }
@@ -246,6 +247,7 @@ class MusaAssignVariableOp : public OpKernel {
                      CopyTensorWithDeviceContext(ctx, value, &copied_value));
 
       *var->tensor() = copied_value;
+      DumpMusaTensorToHost(ctx, copied_value, "copied_value");
     } else {
       *var->tensor() = value;
     }
