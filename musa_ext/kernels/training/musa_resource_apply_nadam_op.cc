@@ -54,7 +54,7 @@ class MusaResourceApplyNadamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
-    LOG(ERROR) << "MusaResourceApplyNadamOp is called."
+    LOG(ERROR) << "MusaResourceApplyNadamOp is called.";
     MUSA_KERNEL_TIMING_GUARD(ctx);
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> m;
