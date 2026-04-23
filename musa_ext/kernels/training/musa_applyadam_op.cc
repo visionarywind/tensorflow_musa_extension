@@ -344,7 +344,7 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
-    LOG(ERROR) << "ResourceApplyAdamKernelOp is called."
+    LOG(ERROR) << "ResourceApplyAdamKernelOp is called.";
     Var* var = nullptr;
     Var* m = nullptr;
     Var* v = nullptr;
