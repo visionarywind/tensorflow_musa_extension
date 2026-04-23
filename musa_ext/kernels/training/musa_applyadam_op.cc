@@ -79,6 +79,7 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ResourceApplyAdamOp is called."
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> m;
     core::RefCountPtr<Var> v;
@@ -343,6 +344,7 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+    LOG(ERROR) << "ResourceApplyAdamKernelOp is called."
     Var* var = nullptr;
     Var* m = nullptr;
     Var* v = nullptr;
