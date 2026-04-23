@@ -17,11 +17,11 @@ namespace musa {
   namespace {
 void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
-  if (device_tensor.shape().device_type() == DEVICE_CPU) {
-    LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
-               << " | Host Addr: " << device_tensor.data() << ", dtype : "<< DataTypeString(device_tensor.dtype());
-    return;
-  }
+  // if (device_tensor.shape().device_type() == DEVICE_CPU) {
+  //   LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
+  //              << " | Host Addr: " << device_tensor.data() << ", dtype : "<< DataTypeString(device_tensor.dtype());
+  //   return;
+  // }
   
   if (device_tensor.NumElements() == 0) {
     LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
