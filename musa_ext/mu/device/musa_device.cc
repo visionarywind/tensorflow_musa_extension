@@ -84,7 +84,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
     // the event immediately can cause the wait to be ignored, leading to race
     // conditions and dirty data.
     if (event_mgr_ != nullptr) {
-      event_mgr_->ThenExecute(h2d_stream_, [sync_event, device_id]() {
+      event_mgr_->ThenExecute(stream_handle_, [sync_event, device_id]() {
         musaSetDevice(device_id);
         musaEventDestroy(sync_event);
       });
@@ -125,7 +125,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
     }
 
     if (event_mgr_) {
-      event_mgr_->ThenExecute(h2d_stream_, [device_id, done]() {
+      event_mgr_->ThenExecute(stream_handle_, [device_id, done]() {
         musaSetDevice(device_id);
         done(Status::OK());
       });
@@ -186,7 +186,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
                                               h2d_stream_);
 
     if (event_mgr_) {
-      event_mgr_->ThenExecute(h2d_stream_, [device_id, done]() {
+      event_mgr_->ThenExecute(stream_handle_, [device_id, done]() {
         musaSetDevice(device_id);
         done(Status::OK());
       });
@@ -245,7 +245,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
   // immediately can cause the wait to be ignored, leading to race conditions
   // and dirty data.
   if (event_mgr_) {
-    event_mgr_->ThenExecute(d2h_stream_, [compute_done_event, device_id]() {
+    event_mgr_->ThenExecute(stream_handle_, [compute_done_event, device_id]() {
       musaSetDevice(device_id);
       musaEventDestroy(compute_done_event);
     });
@@ -268,7 +268,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
 
     if (event_mgr_) {
       TensorReference input_ref(*device_tensor);
-      event_mgr_->ThenExecute(d2h_stream_, [device_id, done, input_ref]() {
+      event_mgr_->ThenExecute(stream_handle_, [device_id, done, input_ref]() {
         input_ref.Unref();
         musaSetDevice(device_id);
         done(Status::OK());
@@ -324,7 +324,7 @@ void MusaDeviceContext::CopyDeviceTensorToCPU(const Tensor* device_tensor,
     // completes
     TensorReference input_ref(*device_tensor);
     if (event_mgr_) {
-      event_mgr_->ThenExecute(d2h_stream_, [musa_dev, device_id, dst,
+      event_mgr_->ThenExecute(stream_handle_, [musa_dev, device_id, dst,
                                             bounce_buffer, bytes, done, input_ref]() {
         musaSetDevice(device_id);
         std::memcpy(dst, bounce_buffer, bytes);
