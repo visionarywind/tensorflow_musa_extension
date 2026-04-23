@@ -233,7 +233,7 @@ void AddNCompute(OpKernelContext* ctx, mFormat format,
 
   for (int i = 0; i < num_inputs; ++i) {
     const Tensor& input = ctx->input(i);
-    DumpHostTensorToHost(ctx, input, "Input " + std::to_string(i));
+    DumpMusaTensorToHost(ctx, input, "Input " + std::to_string(i));
   }
 
   // ==========================================================================
