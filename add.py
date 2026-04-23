@@ -9,7 +9,7 @@ TARGET_DIR = "/Users/shanfeng/Workspace/Moore/tensorflow_musa_extension/musa_ext
 LOG_CODE_STR = """
   if (std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr) {
     LOG(INFO) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
-              << " | Op: " << __FILE_NAME__ 
+              << " | Op: " << __FILE__ 
               << " | Method: " << __FUNCTION__;
   }
 """
