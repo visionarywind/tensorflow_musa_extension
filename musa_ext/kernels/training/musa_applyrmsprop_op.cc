@@ -43,7 +43,7 @@ Status CopyTensorForUpdateRMSProp(OpKernelContext* ctx, const Tensor& src,
                             musaGetErrorString(err));
   }
   
-  GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [src]() {});
+  GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [src, *dst]() {});
   return Status::OK();
 }
 

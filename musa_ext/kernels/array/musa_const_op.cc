@@ -49,9 +49,11 @@ class MusaConstOp : public OpKernel {
       if (!initialized_) {
         AllocatorAttributes attr;
         attr.set_on_host(false);
-        OP_REQUIRES_OK(
-            ctx, ctx->allocate_temp(cpu_tensor_.dtype(), cpu_tensor_.shape(),
-                                    &gpu_tensor_, attr));
+        // OP_REQUIRES_OK(
+        //     ctx, ctx->allocate_temp(cpu_tensor_.dtype(), cpu_tensor_.shape(),
+        //                             &gpu_tensor_, attr));
+      OP_REQUIRES_OK(
+            ctx, ctx->allocate_output(0, cpu_tensor_.shape(), &gpu_tensor_));
 
         auto& handle = GetHandleByCtx(ctx);
         musaStream_t stream =
