@@ -1,6 +1,7 @@
 #include "../utils_op.h"
 #include "mu/device/musa_device.h"
 #include "mu/device/musa_memcpy.h"
+#include "tensorflow/core/framework/device.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/resource_mgr.h"
@@ -16,7 +17,7 @@ namespace musa {
   namespace {
 void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
-  if (device_tensor.TensorData().is_host_memory()) {
+  if (device_tensor.shape().device_type() == DEVICE_CPU) {
     LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
                << " | Host Addr: " << device_tensor.data() << ", dtype : "<< DataTypeString(device_tensor.dtype());
     return;
