@@ -17,12 +17,11 @@ namespace musa {
   namespace {
 void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
                           const string& name) {
-  // if (device_tensor.shape().device_type() == DEVICE_CPU) {
-  //   LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
-  //              << " | Host Addr: " << device_tensor.data() << ", dtype : "<< DataTypeString(device_tensor.dtype());
-  //   return;
-  // }
-  
+  LOG(ERROR) << "=================================================="
+     << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
+     << " | Shape: " << device_tensor.shape().DebugString()
+     << " | Device Addr: " << device_tensor.data();
+  return ;
   if (device_tensor.NumElements() == 0) {
     LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
                << " | Empty Tensor | Shape: "
@@ -177,7 +176,7 @@ class MusaVarHandleOp : public OpKernel {
           std::vector<DtypeAndPartialTensorShape>{dtype_and_shape_},
           ctx->stack_trace());
       ctx->set_output(0, handle);
-      // DumpMusaTensorToHost(ctx, handle, "handle");
+      DumpMusaTensorToHost(ctx, handle, "handle");
     } else {
       ctx->set_output(0, resource_);
     }
