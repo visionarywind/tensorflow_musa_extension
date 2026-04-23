@@ -7,7 +7,8 @@ TARGET_DIR = "/Users/shanfeng/Workspace/Moore/tensorflow_musa_extension/musa_ext
 # 要插入的代码片段 (注意前面的换行和缩进)
 # 我们将日志块定义为多行字符串，确保缩进一致
 LOG_CODE_STR = """
-  if (std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr) {
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
     LOG(INFO) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
               << " | Op: " << __FILE__ 
               << " | Method: " << __FUNCTION__;
