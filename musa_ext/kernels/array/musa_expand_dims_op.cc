@@ -2,6 +2,9 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +21,14 @@ class MusaExpandDimsOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     // Reject Variant type early to align with TensorFlow official behavior.
     OP_REQUIRES(
         context, context->input(0).dtype() != DT_VARIANT,

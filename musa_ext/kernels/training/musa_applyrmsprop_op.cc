@@ -14,6 +14,9 @@
 #include "tensorflow/core/framework/resource_var.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -84,6 +87,14 @@ class MusaResourceApplyRMSPropOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> ms;
     core::RefCountPtr<Var> mom;
@@ -280,6 +291,14 @@ class MusaApplyRMSPropKernelOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     Var* var = nullptr;
     Var* ms = nullptr;
     Var* mom = nullptr;
@@ -461,6 +480,14 @@ class MusaResourceApplyCenteredRMSPropOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> mg;
     core::RefCountPtr<Var> ms;
@@ -693,6 +720,14 @@ class MusaApplyCenteredRMSPropKernelOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     Var* var = nullptr;
     Var* mg = nullptr;
     Var* ms = nullptr;

@@ -6,6 +6,9 @@
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -60,6 +63,14 @@ class MusaFillOp : public MusaOpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& Tdims = context->input(0);
     const Tensor& Tvalue = context->input(1);
 

@@ -3,6 +3,9 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/types.h"
 #include "../utils_op.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -13,6 +16,14 @@ class MusaFloorDivOp : public MusaOpKernel {
   explicit MusaFloorDivOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& in0 = ctx->input(0);
     const Tensor& in1 = ctx->input(1);
 

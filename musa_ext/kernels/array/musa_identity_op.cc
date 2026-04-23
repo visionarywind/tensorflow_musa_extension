@@ -5,6 +5,9 @@
 #include "tensorflow/core/framework/resource_handle.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/public/version.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -14,6 +17,14 @@ class MusaIdentityOp : public OpKernel {
   explicit MusaIdentityOp(OpKernelConstruction* context) : OpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     int num_outputs = context->num_outputs();
     int num_inputs = context->num_inputs();
 

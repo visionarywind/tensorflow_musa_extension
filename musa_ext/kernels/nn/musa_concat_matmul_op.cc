@@ -9,6 +9,9 @@
 #include "tensorflow/core/util/matmul_bcast.h"
 #include "tensorflow/core/util/tensor_format.h"
 #include "utils/logging.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -34,6 +37,14 @@ class MusaConcatMatMulOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     auto& handle = GetHandleByCtx(ctx);

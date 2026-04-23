@@ -1,6 +1,9 @@
 #include "../../utils/musa_tensor_list_utils.h"
 #include "../utils_op.h"
 #include "tensorflow/core/kernels/tensor_list.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -39,6 +42,14 @@ class MusaEmptyTensorListOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& max_num_elements_t = ctx->input(1);
     OP_REQUIRES(
         ctx, TensorShapeUtils::IsScalar(max_num_elements_t.shape()),

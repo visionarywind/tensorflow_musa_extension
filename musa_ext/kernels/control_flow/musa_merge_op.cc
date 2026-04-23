@@ -1,5 +1,8 @@
 #include "../utils_op.h"
 #include "mu/device/musa_device.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -10,6 +13,14 @@ class MusaMergeOp : public MusaOpKernel {
   explicit MusaMergeOp(OpKernelConstruction* context) : MusaOpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     bool input_seen = false;
     for (int i = 0; i < context->num_inputs(); ++i) {
       if (context->has_input(i)) {

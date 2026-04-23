@@ -9,6 +9,9 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "utils/logging.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 // ============================================================================
 // MUSA AddN custom kernel launcher declarations from musa_addn_kernel.mu
@@ -122,6 +125,14 @@ template <typename T>
 void AddNCompute(OpKernelContext* ctx, mFormat format,
                  void (*launcher)(const T**, InlinePointers, T*, int, int,
                                   musaStream_t)) {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
   MUSA_KERNEL_TIMING_GUARD_WITH_NAME(ctx, "AddN");
   MUSA_KERNEL_TRACE_START("FULL");
 
@@ -287,6 +298,14 @@ class MusaAddNOp : public MusaOpKernel {
   explicit MusaAddNOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
   bool IsExpensive() override { return false; }
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     AddNCompute<T>(ctx, format_, GetLauncher());
   }
 

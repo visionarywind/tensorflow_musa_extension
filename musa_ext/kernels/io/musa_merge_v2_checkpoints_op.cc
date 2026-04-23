@@ -1,5 +1,8 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/util/tensor_bundle/tensor_bundle.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -13,6 +16,14 @@ class MusaMergeV2CheckpointsOp : public OpKernel {
   }
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& prefixes = context->input(0);
     const Tensor& destination = context->input(1);
 

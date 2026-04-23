@@ -52,6 +52,9 @@
 #include "tensorflow/core/framework/tensor_util.h"
 #include "tensorflow/core/lib/random/philox_random.h"
 #include "tensorflow/core/util/guarded_philox_random.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 struct MusaPhiloxState {
   uint32_t counter[4];
@@ -100,6 +103,14 @@ class MusaRandomUniformOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& shape_tensor = ctx->input(0);
     TensorShape shape;
     OP_REQUIRES_OK(ctx, tensor::MakeShape(shape_tensor, &shape));
@@ -143,6 +154,14 @@ class MusaRandomUniformIntOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& shape_tensor = ctx->input(0);
     const Tensor& minval_tensor = ctx->input(1);
     const Tensor& maxval_tensor = ctx->input(2);
@@ -197,6 +216,14 @@ class MusaNormalOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& shape_tensor = ctx->input(0);
     TensorShape shape;
     OP_REQUIRES_OK(ctx, tensor::MakeShape(shape_tensor, &shape));

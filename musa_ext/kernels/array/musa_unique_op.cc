@@ -5,6 +5,9 @@
 #include "mu/device/musa_device.h"
 #include "mu/device/musa_memcpy.h"
 #include "mu/device/musa_memset.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -94,6 +97,14 @@ class MusaUniqueOp : public MusaOpKernel {
   explicit MusaUniqueOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& input = ctx->input(0);
     OP_REQUIRES(ctx, input.dims() <= 1,
                 errors::InvalidArgument("Unique only supports 1D tensor, got ", input.dims(), "D"));

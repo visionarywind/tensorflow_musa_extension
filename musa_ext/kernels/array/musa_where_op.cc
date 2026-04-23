@@ -8,6 +8,9 @@
 #include "tensorflow/core/framework/bfloat16.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/types.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +21,14 @@ class MusaWhereOp : public MusaOpKernel {
   explicit MusaWhereOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& input = context->input(0);
     const int input_dims = input.dims();
     if (input.NumElements() == 0) {
@@ -56,6 +67,14 @@ class MusaWhereOp : public MusaOpKernel {
 
     const int64 num_true = *num_true_tensor.flat<int64>().data();
     if (num_true == 0) {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
       Tensor* out = nullptr;
       OP_REQUIRES_OK(context, context->allocate_output(
                                   0, TensorShape({0, input_dims}), &out));

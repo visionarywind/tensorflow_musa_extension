@@ -13,6 +13,8 @@
 #include "tensorflow/core/util/tensor_format.h"
 #include "utils_op.h"
 #include "utils/logging.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
 
 namespace tensorflow {
 namespace musa {
@@ -256,6 +258,14 @@ class MusaConv2DOp : public MusaOpKernel {
   bool IsExpensive() override { return true; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     MUSA_KERNEL_TIMING_GUARD(ctx);
 
     const Tensor& input = ctx->input(0);

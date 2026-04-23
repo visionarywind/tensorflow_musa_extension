@@ -1,5 +1,8 @@
 #include "../utils_op.h"
 #include "tensorflow/core/framework/bfloat16.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -21,6 +24,14 @@ class MusaDiagPartOp : public MusaOpKernel {
   explicit MusaDiagPartOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     const Tensor& tensor = context->input(0);
     const int num_dims = tensor.dims();
     const int out_dims = num_dims / 2;

@@ -7,6 +7,9 @@
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/platform/mutex.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -75,6 +78,14 @@ class MusaResourceApplyFtrlOp : public MusaOpKernel {
       : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> accum;
     core::RefCountPtr<Var> linear;
@@ -143,6 +154,14 @@ class MusaApplyFtrlOp : public MusaOpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     Tensor var;
     OP_REQUIRES_OK(ctx, ctx->mutable_input("var", &var, use_locking_));
     Tensor accum;
@@ -192,6 +211,14 @@ class MusaResourceSparseApplyFtrlOp : public MusaOpKernel {
       : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    LOG(ERROR) << "[MUSA Debug] Thread: " << std::this_thread::get_id() 
+              << " | Op: " << __FILE__ 
+              << " | Method: " << __FUNCTION__;
+  }
+
     core::RefCountPtr<Var> var;
     core::RefCountPtr<Var> accum;
     core::RefCountPtr<Var> linear;
