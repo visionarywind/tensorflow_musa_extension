@@ -69,6 +69,86 @@ class MutexUnlocker {
   mutex* mu_;
 };
 
+namespace {
+void DumpMusaTensorToHost(OpKernelContext* ctx, const Tensor& device_tensor,
+                          const string& name) {
+  if (device_tensor.NumElements() == 0) {
+    LOG(ERROR) << std::this_thread::get_id() << "[Dump] " << name
+               << " | Empty Tensor | Shape: "
+               << device_tensor.shape().DebugString();
+    return;
+  }
+
+  std::stringstream ss;
+  const DataType dtype = device_tensor.dtype();
+  ss << std::this_thread::get_id()
+     << "=================================================="
+     << "[Dump] " << name << " | Type: " << DataTypeString(dtype)
+     << " | Shape: " << device_tensor.shape().DebugString()
+     << " | Device Addr: " << device_tensor.data();
+
+  Tensor host_tensor;
+  AllocatorAttributes cpu_alloc;
+  cpu_alloc.set_on_host(true);
+  OP_REQUIRES_OK(ctx, ctx->allocate_temp(dtype, device_tensor.shape(),
+                                         &host_tensor, cpu_alloc));
+
+  musaStream_t stream = GetMusaStreamByCtx(ctx);
+  musaError_t err = musaMemcpyAsync(host_tensor.data(), device_tensor.data(),
+                                    device_tensor.TotalBytes(),
+                                    musaMemcpyDeviceToHost, stream);
+  musaStreamSynchronize(stream);
+  OP_REQUIRES(
+      ctx, err == musaSuccess,
+      errors::Internal("Dump musaMemcpy failed: ", musaGetErrorString(err)));
+
+  const int64_t num_elems = host_tensor.NumElements();
+
+  ss << std::this_thread::get_id() << "\n\tData:";
+  switch (dtype) {
+    case DT_INT32: {
+      int32 mn = INT_MAX, mx = INT_MIN;
+      const int32* data = host_tensor.flat<int32>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
+        ss << data[i] << "\t";
+      }
+      ss << "min - " << mn << ", max - " << mx << "\t";
+      break;
+    }
+    case DT_INT64: {
+      int64_t mn = INT64_MAX, mx = INT64_MIN;
+      const int64* data = host_tensor.flat<int64>().data();
+      for (int64_t i = 0; i < num_elems; ++i) {
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
+        ss << data[i] << "\t";
+      }
+      ss << "min - " << mn << ", max - " << mx << "\t";
+      break;
+    }
+    case DT_FLOAT: {
+      float mn = FLT_MAX;     // 最大正数
+      float mx = FLT_MIN;
+      const float* data = host_tensor.flat<float>().data();
+      for (int64_t i = 0; i < std::max((int64_t)100, num_elems); ++i) {
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
+      }
+      ss << "min - " << mn << ", max - " << mx << "\t";
+      break;
+    }
+    default: {
+      LOG(ERROR) << "Unsupported dtype: " << DataTypeString(dtype);
+      return;
+    }
+  }
+
+  LOG(ERROR) << ss.str();
+}
+}  // namespace 
+
 template <typename T>
 class MusaResourceApplyAdamOp : public MusaOpKernel {
  public:
@@ -119,6 +199,9 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
     Tensor var_t = *var->tensor();
     Tensor m_t = *m->tensor();
     Tensor v_t = *v->tensor();
+    DumpMusaTensorToHost(ctx, var_t, "before_var");
+    DumpMusaTensorToHost(ctx, m_t, "before_m_t");
+    DumpMusaTensorToHost(ctx, v_t, "before_v_t");
     const Tensor& grad = ctx->input(9);
 
     OP_REQUIRES(
@@ -324,6 +407,16 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
                 errors::Internal("ResourceApplyAdam: musaStreamSynchronize "
                                  "failed: ",
                                  musaGetErrorString(sync_err)));
+
+
+    DumpMusaTensorToHost(ctx, var_t, "after_var");
+    DumpMusaTensorToHost(ctx, m_t, "after_m_t");
+    DumpMusaTensorToHost(ctx, v_t, "after_v_t");
+    
+    int index = 0;
+    for (auto &t : temp_storage) {
+      DumpMusaTensorToHost(ctx, t, "storage- " + std::to_string(index++));
+    }
   }
 
  private:
@@ -515,8 +608,10 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
     b_op.Run(handle, t_var, t_var, t_update_scaled);
 
     if (IsRefType(ctx->input_dtype(0))) {
+      LOG(ERROR) << "ResourceApplyAdam: ref type.";
       ctx->forward_ref_input_to_ref_output(0, 0);
     } else {
+      LOG(ERROR) << "ResourceApplyAdam: set output.";
       for (int i = 0; i < ctx->num_outputs(); ++i) {
         ctx->set_output(i, ctx->input(i));
       }
