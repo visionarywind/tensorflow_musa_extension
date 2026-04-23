@@ -228,6 +228,7 @@ class MusaApplyGradientDescentOp : public MusaOpKernel {
     if (IsRefType(ctx->input_dtype(0))) {
       ctx->forward_ref_input_to_ref_output(0, 0);
     }
+    GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(GetMusaStreamByCtx(ctx), [&temp_storage]() {});
   }
 };
 

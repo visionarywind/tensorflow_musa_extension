@@ -519,6 +519,7 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
         ctx->set_output(i, ctx->input(i));
       }
     }
+    GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(GetMusaStreamByCtx(ctx), [&temp_storage]() {});
   }
 
  private:
