@@ -211,7 +211,7 @@ class MusaAssignVariableOp : public OpKernel {
   }
 
     const Tensor& value = ctx->input(1);
-      DumpMusaTensorToHost(ctx, copied_value, "copied_value");
+    // DumpMusaTensorToHost(ctx, value, "value");
     OP_REQUIRES(
         ctx, dtype_ == value.dtype(),
         errors::InvalidArgument(
