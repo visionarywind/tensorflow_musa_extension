@@ -161,6 +161,10 @@ class MusaTensorListFromTensorOp : public MusaOpKernel {
         auto err =
             musaMemcpyAsync(dst, src, bytes, musaMemcpyDeviceToDevice, stream);
 
+        GetDeviceByCtx(ctx)->event_mgr()->ThenExecute(stream, [aligned, tmp, input_tensor, dst, src]() {
+          LOG(ERROR) << "can free dst : " << dst << ", src : " << src;
+        });
+
         OP_REQUIRES(
             ctx, err == musaSuccess,
             errors::Internal(
