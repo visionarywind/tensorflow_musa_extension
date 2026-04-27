@@ -9,6 +9,9 @@
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "utils/logging.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 // ============================================================================
 // MUSA AddN custom kernel launcher declarations from musa_addn_kernel.mu
@@ -122,6 +125,24 @@ template <typename T>
 void AddNCompute(OpKernelContext* ctx, mFormat format,
                  void (*launcher)(const T**, InlinePointers, T*, int, int,
                                   musaStream_t)) {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = ctx->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
   MUSA_KERNEL_TIMING_GUARD_WITH_NAME(ctx, "AddN");
   MUSA_KERNEL_TRACE_START("FULL");
 
@@ -287,6 +308,24 @@ class MusaAddNOp : public MusaOpKernel {
   explicit MusaAddNOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
   bool IsExpensive() override { return false; }
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = ctx->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     AddNCompute<T>(ctx, format_, GetLauncher());
   }
 

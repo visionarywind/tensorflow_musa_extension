@@ -1,6 +1,11 @@
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/util/tensor_format.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
+#include "../utils_op.h"
+
 
 namespace tensorflow {
 namespace musa {
@@ -12,6 +17,24 @@ class MusaSqueezeOp : public OpKernel {
   }
 
   void Compute(OpKernelContext* c) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = c->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << c->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(c));
+  }
+
     const Tensor& input = c->input(0);
 
     TensorShape output_shape;

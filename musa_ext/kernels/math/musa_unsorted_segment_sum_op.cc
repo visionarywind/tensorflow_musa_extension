@@ -7,6 +7,9 @@
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/platform/logging.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 extern "C" {
 void LaunchUnsortedSegmentSumFloatInt32(const float* data,
@@ -55,6 +58,24 @@ class UnsortedSegmentSumOp : public OpKernel {
   explicit UnsortedSegmentSumOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = ctx->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     const Tensor& data = ctx->input(0);
     const Tensor& segment_ids = ctx->input(1);
     const Tensor& num_segments_t = ctx->input(2);

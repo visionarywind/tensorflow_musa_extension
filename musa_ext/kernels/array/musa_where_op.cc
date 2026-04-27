@@ -8,6 +8,9 @@
 #include "tensorflow/core/framework/bfloat16.h"
 #include "tensorflow/core/framework/register_types.h"
 #include "tensorflow/core/framework/types.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -18,6 +21,24 @@ class MusaWhereOp : public MusaOpKernel {
   explicit MusaWhereOp(OpKernelConstruction* ctx) : MusaOpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = context->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << context->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(context));
+  }
+
     const Tensor& input = context->input(0);
     const int input_dims = input.dims();
     if (input.NumElements() == 0) {

@@ -6,6 +6,10 @@
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/util/tensor_bundle/tensor_bundle.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
+#include "../utils_op.h"
 
 namespace tensorflow {
 namespace musa {
@@ -15,6 +19,24 @@ class MusaSaveV2Op : public OpKernel {
   explicit MusaSaveV2Op(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = ctx->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     const Tensor& prefix = ctx->input(0);
     const Tensor& tensor_names = ctx->input(1);
     const Tensor& shape_and_slices = ctx->input(2);

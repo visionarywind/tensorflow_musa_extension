@@ -6,6 +6,9 @@
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "../utils_op.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -16,6 +19,24 @@ class MusaSplitOp : public OpKernel {
   explicit MusaSplitOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
 
   void Compute(OpKernelContext* context) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    int input_num = context->num_inputs();
+    for (int i = 0; i < input_num; ++i) {
+        ss << " | Input " << i << ": " << context->input(i).shape().DebugString();
+    }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(context));
+  }
+
     const Tensor& split_dim_tensor = context->input(0);
     const Tensor& input = context->input(1);
     const TensorShape& input_shape = input.shape();

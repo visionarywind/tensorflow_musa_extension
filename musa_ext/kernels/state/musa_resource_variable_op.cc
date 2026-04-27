@@ -6,6 +6,9 @@
 #include "tensorflow/core/framework/resource_mgr.h"
 #include "tensorflow/core/framework/resource_var.h"
 #include "tensorflow/core/lib/core/notification.h"
+#include <thread>
+#include <tensorflow/core/platform/logging.h>
+#include <cstdlib>
 
 namespace tensorflow {
 namespace musa {
@@ -70,6 +73,24 @@ class MusaVarHandleOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    // int input_num = ctx->num_inputs();
+    // for (int i = 0; i < input_num; ++i) {
+    //     ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    // }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     if (is_anonymous_) {
       AllocatorAttributes attr;
       attr.set_on_host(true);
@@ -106,6 +127,24 @@ class MusaAssignVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    // int input_num = ctx->num_inputs();
+    // for (int i = 0; i < input_num; ++i) {
+    //     ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    // }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     const Tensor& value = ctx->input(1);
     OP_REQUIRES(
         ctx, dtype_ == value.dtype(),
@@ -173,6 +212,24 @@ class MusaReadVariableOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    // int input_num = ctx->num_inputs();
+    // for (int i = 0; i < input_num; ++i) {
+    //     ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    // }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     core::RefCountPtr<Var> var;
     const Tensor& handle_tensor = ctx->input(0);
     const ResourceHandle& handle = handle_tensor.flat<ResourceHandle>()(0);
@@ -236,6 +293,24 @@ class MusaVarIsInitializedOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    // int input_num = ctx->num_inputs();
+    // for (int i = 0; i < input_num; ++i) {
+    //     ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    // }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     Tensor* out = nullptr;
     OP_REQUIRES_OK(ctx, ctx->allocate_output(0, TensorShape({}), &out));
     core::RefCountPtr<Var> var;
@@ -255,6 +330,24 @@ class MusaDestroyResourceOp : public OpKernel {
   bool IsExpensive() override { return false; }
 
   void Compute(OpKernelContext* ctx) override {
+
+  static bool debug_log = std::getenv("MUSA_KERNEL_DEBUG_LOG") == nullptr;
+  if (debug_log) {
+    std::stringstream ss;
+    ss << "[MUSA Debug] Thread: " << std::this_thread::get_id()
+              << " | Op: " << __FILE__
+              << " | Method: " << __FUNCTION__;
+    // int input_num = ctx->num_inputs();
+    // for (int i = 0; i < input_num; ++i) {
+    //     ss << " | Input " << i << ": " << ctx->input(i).shape().DebugString();
+    // }
+    LOG(ERROR) << ss.str();
+  }
+  static bool sync_execute = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (sync_execute) {
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx));
+  }
+
     Status status = DeleteResource(ctx, HandleFromInput(ctx, 0));
     if (ignore_lookup_error_ && errors::IsNotFound(status)) {
       return;
