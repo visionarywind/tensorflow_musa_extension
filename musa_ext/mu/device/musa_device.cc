@@ -378,6 +378,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
       return;
     }
 
+    LOG(ERROR) << "memcpy cpy - src : " << src << " dst : " << bounce_buffer;
     // Stage 1: Copy from pageable to pinned (CPU-side, synchronous)
     std::memcpy(bounce_buffer, src, bytes);
 
