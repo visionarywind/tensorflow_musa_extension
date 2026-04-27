@@ -210,9 +210,9 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
     Tensor var_t = *var->tensor();
     Tensor m_t = *m->tensor();
     Tensor v_t = *v->tensor();
-    DumpMusaTensorToHost(ctx, var_t, "before_var");
-    DumpMusaTensorToHost(ctx, m_t, "before_m_t");
-    DumpMusaTensorToHost(ctx, v_t, "before_v_t");
+    // DumpMusaTensorToHost(ctx, var_t, "before_var");
+    // DumpMusaTensorToHost(ctx, m_t, "before_m_t");
+    // DumpMusaTensorToHost(ctx, v_t, "before_v_t");
     const Tensor& grad = ctx->input(9);
 
     OP_REQUIRES(
@@ -420,14 +420,14 @@ class MusaResourceApplyAdamOp : public MusaOpKernel {
                                  musaGetErrorString(sync_err)));
 
 
-    DumpMusaTensorToHost(ctx, var_t, "after_var");
-    DumpMusaTensorToHost(ctx, m_t, "after_m_t");
-    DumpMusaTensorToHost(ctx, v_t, "after_v_t");
+    // DumpMusaTensorToHost(ctx, var_t, "after_var");
+    // DumpMusaTensorToHost(ctx, m_t, "after_m_t");
+    // DumpMusaTensorToHost(ctx, v_t, "after_v_t");
     
-    int index = 0;
-    for (auto &t : temp_storage) {
-      DumpMusaTensorToHost(ctx, t, "storage- " + std::to_string(index++));
-    }
+    // int index = 0;
+    // for (auto &t : temp_storage) {
+    //   DumpMusaTensorToHost(ctx, t, "storage- " + std::to_string(index++));
+    // }
   }
 
  private:
