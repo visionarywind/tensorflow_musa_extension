@@ -46,6 +46,219 @@ MusaDeviceContext::~MusaDeviceContext() {
   }
 }
 
+namespace {
+class MusaRawAllocator : public Allocator {
+ public:
+  MusaRawAllocator(int device_id) : device_id_(device_id), next_id_(1) {}
+  
+  ~MusaRawAllocator() override {
+    // 在析构时，理论上所有内存应已被释放。
+    // 如果 map 不为空，说明有内存泄漏，这里可以加日志警告。
+    mutex_lock l(mu_);
+    if (!ptr_info_map_.empty()) {
+      LOG(WARNING) << "MusaRawAllocator destroyed with " 
+                   << ptr_info_map_.size() << " unfreed allocations.";
+    }
+  }
+
+  // 1. 返回分配器名称
+  std::string Name() override { 
+    return "musa_raw_allocator"; 
+  }
+
+  // 2. 核心分配逻辑 (无属性)
+  void* AllocateRaw(size_t alignment, size_t num_bytes) override {
+    // 调用带属性的版本，使用默认属性
+    AllocationAttributes attr;
+    return AllocateRaw(alignment, num_bytes, attr);
+  }
+
+  // 3. 核心分配逻辑 (带属性)
+  void* AllocateRaw(size_t alignment, size_t num_bytes,
+                    const AllocationAttributes& allocation_attr) override {
+    if (num_bytes == 0) {
+      return nullptr;
+    }
+
+    // MUSA malloc 通常返回对齐良好的内存，但为了严格满足 alignment 要求
+    // 如果 alignment 大于默认对齐，可能需要更复杂的处理。
+    // 这里假设 musaMalloc 满足 TF 常见的 64/256 字节对齐需求。
+    void* ptr = nullptr;
+    musaSetDevice(device_id_);
+    musaError_t error = musaMalloc(&ptr, num_bytes);
+    
+    if (error != musaSuccess) {
+      // 如果设置了 retry_on_failure，这里应该实现重试逻辑。
+      // 作为裸分配器示例，我们直接记录错误并返回 nullptr。
+      if (allocation_attr.retry_on_failure) {
+         LOG(ERROR) << "musaMalloc failed (retry requested but not implemented in raw alloc): " 
+                    << musaGetErrorString(error);
+      } else {
+         LOG(WARNING) << "musaMalloc failed (no retry): " 
+                      << musaGetErrorString(error);
+      }
+      return nullptr;
+    }
+
+    // 记录分配信息
+    {
+      mutex_lock l(mu_);
+      int64 id = next_id_.fetch_add(1);
+      
+      PtrInfo info;
+      info.requested_size = num_bytes;
+      // musaMalloc 实际分配的大小可能略大于请求大小，但在没有额外 API 查询的情况下，
+      // 我们通常认为 allocated_size >= requested_size。
+      // 对于裸 musaMalloc，如果没有 pitch 或特殊对齐开销，通常两者接近。
+      // 这里为了保守起见，如果有对齐需求，实际占用可能更大，但 musaMalloc 不暴露确切大小。
+      // 我们暂且将 allocated_size 设为 num_bytes，或者如果知道对齐填充，可以加上。
+      // 注意：TF 的 BFC 等上层分配器会处理具体的对齐填充计算。
+      // 在此裸实现中，我们假设 musaMalloc 返回的块就是我们要管理的块。
+      info.allocated_size = num_bytes; 
+      info.id = id;
+
+      ptr_info_map_[ptr] = info;
+
+      // 更新统计
+      stats_.num_allocs++;
+      stats_.bytes_in_use += num_bytes;
+      if (stats_.bytes_in_use > stats_.peak_bytes_in_use) {
+        stats_.peak_bytes_in_use = stats_.bytes_in_use;
+      }
+      if (num_bytes > stats_.largest_alloc_size) {
+        stats_.largest_alloc_size = num_bytes;
+      }
+    }
+
+    // 如果 allocation_will_be_logged 为 false，TF 核心可能会记录未知分配。
+    // 这里我们不做额外操作，因为我们的 GetStats 能追踪到它。
+
+    return ptr;
+  }
+
+  // 4. 释放逻辑
+  void DeallocateRaw(void* ptr) override {
+    if (ptr == nullptr) {
+      return;
+    }
+
+    size_t bytes_to_free = 0;
+
+    {
+      mutex_lock l(mu_);
+      auto it = ptr_info_map_.find(ptr);
+      if (it == ptr_info_map_.end()) {
+        LOG(ERROR) << "Deallocating pointer not allocated by this allocator: " << ptr;
+        return;
+      }
+
+      bytes_to_free = it->second.requested_size;
+      
+      // 从地图中移除
+      ptr_info_map_.erase(it);
+
+      // 更新统计
+      stats_.bytes_in_use -= bytes_to_free;
+    }
+
+    // 执行实际的 MUSA 释放
+    musaSetDevice(device_id_);
+    musaError_t error = musaFree(ptr);
+    if (error != musaSuccess) {
+      LOG(ERROR) << "musaFree failed: " << musaGetErrorString(error);
+    }
+  }
+
+  // 5. 是否跟踪大小
+  bool TracksAllocationSizes() const override { 
+    return true; 
+  }
+
+  // 6. 是否分配不透明句柄
+  bool AllocatesOpaqueHandle() const override { 
+    return false; 
+  }
+
+  // 7. 获取请求的大小
+  size_t RequestedSize(const void* ptr) const override {
+    CHECK(ptr != nullptr);
+    mutex_lock l(mu_);
+    auto it = ptr_info_map_.find(const_cast<void*>(ptr));
+    CHECK(it != ptr_info_map_.end()) << "Pointer not found in allocator map";
+    return it->second.requested_size;
+  }
+
+  // 8. 获取实际分配的大小
+  size_t AllocatedSize(const void* ptr) const override {
+    CHECK(ptr != nullptr);
+    mutex_lock l(mu_);
+    auto it = ptr_info_map_.find(const_cast<void*>(ptr));
+    CHECK(it != ptr_info_map_.end()) << "Pointer not found in allocator map";
+    return it->second.allocated_size;
+  }
+
+  // 9. 获取分配 ID
+  int64 AllocationId(const void* ptr) const override {
+    CHECK(ptr != nullptr);
+    mutex_lock l(mu_);
+    auto it = ptr_info_map_.find(const_cast<void*>(ptr));
+    CHECK(it != ptr_info_map_.end()) << "Pointer not found in allocator map";
+    return it->second.id;
+  }
+
+  // 10. 慢速获取分配大小 (如果不跟踪大小才需要复杂实现，这里直接调用 AllocatedSize)
+  size_t AllocatedSizeSlow(const void* ptr) const override {
+    if (TracksAllocationSizes()) {
+      return AllocatedSize(ptr);
+    }
+    return 0;
+  }
+
+  // 11. 获取统计信息
+  absl::optional<AllocatorStats> GetStats() override {
+    mutex_lock l(mu_);
+    return stats_;
+  }
+
+  // 12. 清除统计信息 (保留 in_use)
+  bool ClearStats() override {
+    mutex_lock l(mu_);
+    stats_.num_allocs = 0;
+    stats_.peak_bytes_in_use = stats_.bytes_in_use; // 峰值重置为当前用量
+    stats_.largest_alloc_size = 0;
+    stats_.bytes_reserved = 0; // 裸分配器通常不涉及额外的 reserve 概念
+    stats_.peak_bytes_reserved = 0;
+    stats_.largest_free_block_bytes = 0; // 裸分配器无法知道堆中的最大空闲块
+    return true;
+  }
+
+  // 13. 设置安全前沿 (用于异步释放优化，裸分配器不支持)
+  void SetSafeFrontier(uint64 count) override {
+    // No-op for raw allocator
+  }
+
+  // 14. 设置流 (用于流感知分配器，裸分配器不支持)
+  void SetStream(void* stream) override {
+    // No-op for raw allocator
+  }
+
+ private:
+  int device_id_{0};
+  // 用于存储每个指针的元数据
+  struct PtrInfo {
+    size_t requested_size;
+    size_t allocated_size;
+    int64 id;
+  };
+
+  mutable mutex mu_;
+  std::unordered_map<void*, PtrInfo> ptr_info_map_ TF_GUARDED_BY(mu_);
+  
+  std::atomic<int64> next_id_;
+  AllocatorStats stats_ TF_GUARDED_BY(mu_);
+};
+}
+
 void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
                                               Device* device,
                                               Tensor* device_tensor,
@@ -436,12 +649,13 @@ MusaDevice::MusaDevice(Env* env, const DeviceAttributes& attributes,
   // garbage_collection=true to reclaim unused memory
   // bfc_memory_limit was calculated at the start of constructor BEFORE
   // any streams/handles were created, to capture the true available memory.
-  musa_allocator_ = new BFCAllocator(new MusaSubAllocator(device_id_, {}, {}),
-                                     bfc_memory_limit,
-                                     false,  // allow_growth
-                                     "Musa_BFC_Allocator",
-                                     true  // garbage_collection
-  );
+  // musa_allocator_ = new BFCAllocator(new MusaSubAllocator(device_id_, {}, {}),
+  //                                    bfc_memory_limit,
+  //                                    false,  // allow_growth
+  //                                    "Musa_BFC_Allocator",
+  //                                    true  // garbage_collection
+  // );
+  musa_allocator_ = new MusaRawAllocator(device_id_);
 
   VLOG(1) << ">>> [MUSA] Device " << device_id_
           << " using official TF BFCAllocator with bfc_memory_limit="
