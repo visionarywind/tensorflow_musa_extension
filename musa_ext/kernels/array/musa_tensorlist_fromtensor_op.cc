@@ -151,6 +151,7 @@ class MusaTensorListFromTensorOp : public MusaOpKernel {
       if (bytes > 0) {
         void* dst = tensorflow::DMAHelper::base(&aligned);
         const void* src = tensorflow::DMAHelper::base(&tmp);
+        LOG(ERROR) << "dst: " << dst << " src: " << src << " bytes: " << bytes;
 
         OP_REQUIRES(ctx, dst != nullptr,
                     errors::Internal("DMAHelper::base(&aligned) is nullptr"));

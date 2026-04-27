@@ -132,7 +132,7 @@ class MusaRawAllocator : public Allocator {
 
     // 如果 allocation_will_be_logged 为 false，TF 核心可能会记录未知分配。
     // 这里我们不做额外操作，因为我们的 GetStats 能追踪到它。
-
+    LOG(ERROR) << "Malloc ptr : " << ptr << "num_bytes : " << num_bytes;
     return ptr;
   }
 
@@ -163,6 +163,8 @@ class MusaRawAllocator : public Allocator {
 
     // 执行实际的 MUSA 释放
     musaSetDevice(device_id_);
+
+    LOG(ERROR) << "Free ptr : " << ptr;
     musaError_t error = musaFree(ptr);
     if (error != musaSuccess) {
       LOG(ERROR) << "musaFree failed: " << musaGetErrorString(error);
