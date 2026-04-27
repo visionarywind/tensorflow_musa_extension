@@ -147,9 +147,9 @@ class MusaMultiplyOp : public MusaOpKernel {
     mTensor mt_out = CreateMTensor(*output, format_);
 
     auto status = binary_op.Run(handle, mt_out, mt_in0, mt_in1);
-    // DumpMusaTensorToHost(ctx, in0, "in0");
-    // DumpMusaTensorToHost(ctx, in1, "in1");
-    // DumpMusaTensorToHost(ctx, *output, "output");
+    DumpMusaTensorToHost(ctx, in0, "in0");
+    DumpMusaTensorToHost(ctx, in1, "in1");
+    DumpMusaTensorToHost(ctx, *output, "output");
 
     OP_REQUIRES(ctx, status == mStatus::SUCCESS,
                 errors::Internal("MUSA Multiply execution failed. Status: ",
