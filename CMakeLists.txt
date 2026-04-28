@@ -123,6 +123,7 @@ set(MCC_COMMON_FLAGS
     -fsanitize=address
     -O0
     -fno-omit-frame-pointer
+    -D_GLIBCXX_USE_CXX11_ABI=0
     -fPIC
     -std=c++17
     -DEIGEN_DONT_VECTORIZE
@@ -167,7 +168,7 @@ set_target_properties(musa_plugin PROPERTIES
 )
 
 # Link
-target_link_libraries(musa_plugin PRIVATE ${TF_LINK_FLAGS} musa mublas ${MUSA_DNN_LIBRARY} rt -fsanitize=address)
+target_link_libraries(musa_plugin PRIVATE ${TF_LINK_FLAGS} musa mublas ${MUSA_DNN_LIBRARY} rt -fsanitize=address -static-libasan)
 
 # Output configuration
 set_target_properties(musa_plugin PROPERTIES
