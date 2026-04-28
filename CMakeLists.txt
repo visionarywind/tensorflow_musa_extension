@@ -119,7 +119,10 @@ file(GLOB_RECURSE MU_SOURCES "${SRC_ROOT}/kernels/*.mu")
 # TensorFlow headers pulled into `.mu` compilation require C++17, and mcc's
 # aarch64 host predefines can incorrectly trigger NEON-only host headers.
 set(MCC_COMMON_FLAGS
-    -O3
+    -g
+    -fsanitize=address
+    -O0
+    -fno-omit-frame-pointer
     -fPIC
     -std=c++17
     -DEIGEN_DONT_VECTORIZE
