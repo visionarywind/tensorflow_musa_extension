@@ -316,7 +316,7 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
             << "dst=" << dst << " bytes=" << bytes;
   }
 
-  static bool enable_sync_copy = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  static bool enable_sync_copy = std::getenv("SYNC_H2D") == "1";
   if (enable_sync_copy) {
     musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
     return;
