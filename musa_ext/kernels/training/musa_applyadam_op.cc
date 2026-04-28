@@ -389,12 +389,12 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
     // OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 2), &v));
     // core::ScopedUnref var_unref(var), m_unref(m), v_unref(v);
 
-    // Tensor* var_t = var->tensor();
-    // Tensor* m_t = m->tensor();
-    // Tensor* v_t = v->tensor();
-    Tensor* var_t = &(ctx->mutable_input(0, false));
-    Tensor* m_t = &(ctx->mutable_input(1, false));
-    Tensor* v_t = &(ctx->mutable_input(2, false));
+    Tensor var = (ctx->mutable_input(0, false));
+    Tensor m = (ctx->mutable_input(1, false));
+    Tensor v =  (ctx->mutable_input(2, false));
+    Tensor *var_t = &var;
+    Tensor *m_t = &m;
+    Tensor *v_t = &v;
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(0, &var_t, false));
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(1, &m_t, false));
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(2, &v_t, false));
