@@ -284,8 +284,8 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
     musaStreamSynchronize(h2d_stream_);
     musaStreamSynchronize(stream_handle_);
     musaStreamSynchronize(d2h_stream_);
-    musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
-    return;
+    // musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
+    // return;
   }
 
   // The semantics of sync_dst_compute is that:
