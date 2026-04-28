@@ -318,6 +318,9 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
 
   static bool enable_sync_copy = true; // std::getenv("SYNC_H2D") == "1";
   if (enable_sync_copy) {
+    musaStreamSynchronize(h2d_stream_);
+    musaStreamSynchronize(stream_handle_);
+    musaStreamSynchronize(d2h_stream_);
     musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
     return;
   }
