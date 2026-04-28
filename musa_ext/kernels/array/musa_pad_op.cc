@@ -41,6 +41,7 @@ class MusaPadOp : public MusaOpKernel {
     const Tensor& input = context->input(0);
     const Tensor& paddings = context->input(1);
     const int dims = input.dims();
+    LOG(ERROR) << "Pad dims : " << dims << ", input : " << input.DebugString();
     static constexpr int kMinDims = 0;
     static constexpr int kMaxDims = 8;
 
