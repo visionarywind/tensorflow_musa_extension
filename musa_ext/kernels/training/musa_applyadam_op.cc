@@ -389,12 +389,43 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
     // OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 2), &v));
     // core::ScopedUnref var_unref(var), m_unref(m), v_unref(v);
 
-    Tensor var = (ctx->mutable_input(0, false));
-    Tensor m = (ctx->mutable_input(1, false));
-    Tensor v =  (ctx->mutable_input(2, false));
-    Tensor *var_t = &var;
-    Tensor *m_t = &m;
-    Tensor *v_t = &v;
+    core::RefCountPtr<Var> var;
+    core::RefCountPtr<Var> m;
+    core::RefCountPtr<Var> v;
+    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 0), &var));
+    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 1), &m));
+    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 2), &v));
+
+    std::vector<mutex*> mutexes;
+    auto add_mutex = [&](mutex* mu) {
+      if (std::find(mutexes.begin(), mutexes.end(), mu) == mutexes.end()) {
+        mutexes.push_back(mu);
+      }
+    };
+    add_mutex(var->mu());
+    add_mutex(m->mu());
+    add_mutex(v->mu());
+    std::sort(mutexes.begin(), mutexes.end());
+
+    for (mutex* mu : mutexes) {
+      mu->lock();
+    }
+    std::vector<MutexUnlocker> locks;
+    locks.reserve(mutexes.size());
+    for (mutex* mu : mutexes) {
+      locks.emplace_back(mu);
+    }
+
+    Tensor* var_t = var->tensor();
+    Tensor* m_t = m->tensor();
+    Tensor* v_t = v->tensor();
+
+    // Tensor var = (ctx->mutable_input(0, false));
+    // Tensor m = (ctx->mutable_input(1, false));
+    // Tensor v =  (ctx->mutable_input(2, false));
+    // Tensor *var_t = &var;
+    // Tensor *m_t = &m;
+    // Tensor *v_t = &v;
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(0, &var_t, false));
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(1, &m_t, false));
     //OP_REQUIRES_OK(ctx, ctx->mutable_input(2, &v_t, false));
