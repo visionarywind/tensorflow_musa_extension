@@ -316,6 +316,12 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
             << "dst=" << dst << " bytes=" << bytes;
   }
 
+  static bool enable_sync_copy = std::getenv("MUSA_LAUNCH_BLOCKING") == "1";
+  if (enable_sync_copy) {
+    musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
+    return;
+  }
+
   // Check if source memory is pinned (musaMemoryTypeHost)
   musaPointerAttributes attributes;
   musaError_t attr_err = musaPointerGetAttributes(&attributes, src);
