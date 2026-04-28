@@ -279,6 +279,15 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
     return;
   }
 
+  static bool enable_sync_copy = true; // std::getenv("SYNC_H2D") == "1";
+  if (enable_sync_copy) {
+    musaStreamSynchronize(h2d_stream_);
+    musaStreamSynchronize(stream_handle_);
+    musaStreamSynchronize(d2h_stream_);
+    musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
+    return;
+  }
+
   // The semantics of sync_dst_compute is that:
   //    the current copy operation needs to wait for the computation to finish
   //    so, when set to true, the copy stream waits for the compute stream to
@@ -314,15 +323,6 @@ void MusaDeviceContext::CopyCPUTensorToDevice(const Tensor* cpu_tensor,
     VLOG(1) << "CopyCPUTensorToDevice called with sync_dst_compute=false. "
             << "Caller MUST ensure proper synchronization before kernel reads. "
             << "dst=" << dst << " bytes=" << bytes;
-  }
-
-  static bool enable_sync_copy = true; // std::getenv("SYNC_H2D") == "1";
-  if (enable_sync_copy) {
-    musaStreamSynchronize(h2d_stream_);
-    musaStreamSynchronize(stream_handle_);
-    musaStreamSynchronize(d2h_stream_);
-    musaMemcpy(dst, src, bytes, musaMemcpyHostToDevice);
-    return;
   }
 
   // Check if source memory is pinned (musaMemoryTypeHost)
