@@ -381,17 +381,23 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
     musaStreamSynchronize(GetMusaStreamByCtx(ctx));
   }
 
-    Var* var = nullptr;
-    Var* m = nullptr;
-    Var* v = nullptr;
-    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 0), &var));
-    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 1), &m));
-    OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 2), &v));
-    core::ScopedUnref var_unref(var), m_unref(m), v_unref(v);
+    // Var* var = nullptr;
+    // Var* m = nullptr;
+    // Var* v = nullptr;
+    // OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 0), &var));
+    // OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 1), &m));
+    // OP_REQUIRES_OK(ctx, LookupResource(ctx, HandleFromInput(ctx, 2), &v));
+    // core::ScopedUnref var_unref(var), m_unref(m), v_unref(v);
 
-    Tensor* var_t = var->tensor();
-    Tensor* m_t = m->tensor();
-    Tensor* v_t = v->tensor();
+    // Tensor* var_t = var->tensor();
+    // Tensor* m_t = m->tensor();
+    // Tensor* v_t = v->tensor();
+    Tensor* var_t = nullptr;
+    Tensor* m_t = nullptr;
+    Tensor* v_t = nullptr;
+    OP_REQUIRES_OK(ctx, ctx->mutable_input(0, &var_t, false));
+    OP_REQUIRES_OK(ctx, ctx->mutable_input(1, &m_t, false));
+    OP_REQUIRES_OK(ctx, ctx->mutable_input(2, &v_t, false));
 
     OP_REQUIRES(
         ctx,
@@ -557,6 +563,7 @@ class MusaApplyAdamKernelOp : public MusaOpKernel {
         ctx->set_output(i, ctx->input(i));
       }
     }
+    musaStreamSynchronize(GetMusaStreamByCtx(ctx))；
   }
 
  private:
