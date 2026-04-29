@@ -26,6 +26,9 @@ class MusaTopKV2Op : public MusaOpKernel {
   void Compute(OpKernelContext* ctx) override {
     const Tensor& input = ctx->input(0);
     const Tensor& k_tensor = ctx->input(1);
+    LOG(ERROR) << "TopK input nums : " << ctx->num_inputs();
+    LOG(ERROR) << "TopK input 0 : " << input.DebugString();
+    LOG(ERROR) << "TopK input 1 : " << k_tensor.DebugString();
 
     OP_REQUIRES(
         ctx, input.dims() >= 1,
