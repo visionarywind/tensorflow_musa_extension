@@ -8,11 +8,7 @@
 
 using namespace tensorflow;
 
-// ----------------------------------------------------------------------------
-// 核函数启动器声明（完整无省略）
-// ----------------------------------------------------------------------------
 extern "C" {
-// 掩码生成启动器
 void LaunchGenerateSparseSliceMask1D(const int64_t* indices,
                                      const int64_t* start, const int64_t* size,
                                      int64_t N, bool* mask,
@@ -34,7 +30,6 @@ void LaunchGenerateSparseSliceMask5D(const int64_t* indices,
                                      int64_t N, bool* mask,
                                      musaStream_t stream);
 
-// 元素收集启动器 - 基础类型
 void LaunchGatherSparseSliceElementsFloat1D(
     const int64_t* indices, const float* values, const int64_t* start,
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
@@ -140,7 +135,6 @@ void LaunchGatherSparseSliceElementsUInt85D(
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
     uint8_t* out_values, musaStream_t stream);
 
-    // 元素收集启动器 - Int8
 void LaunchGatherSparseSliceElementsInt81D(
     const int64_t* indices, const int8_t* values, const int64_t* start,
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
@@ -162,7 +156,6 @@ void LaunchGatherSparseSliceElementsInt85D(
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
     int8_t* out_values, musaStream_t stream);
 
-// 元素收集启动器 - Int16
 void LaunchGatherSparseSliceElementsInt161D(
     const int64_t* indices, const int16_t* values, const int64_t* start,
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
@@ -226,7 +219,6 @@ void LaunchGatherSparseSliceElementsBool5D(
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
     bool* out_values, musaStream_t stream);
 
-// 元素收集启动器 - FP16
 void LaunchGatherSparseSliceElementsHalf1D(
     const int64_t* indices, const void* values, const int64_t* start,
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
@@ -270,7 +262,6 @@ void LaunchGatherSparseSliceElementsBFloat165D(
     const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
     void* out_values, musaStream_t stream);
 
-// 辅助核函数启动器
 void LaunchMaskToCount(const bool* mask, int32_t* count, int64_t N,
                        musaStream_t stream);
 void LaunchBlockScan(const int32_t* count, int64_t* pos, int64_t* block_sums,
@@ -283,9 +274,6 @@ void LaunchAddBlockPrefixSum(int64_t* pos, const int64_t* block_prefix_sums,
 namespace tensorflow {
 namespace musa {
 
-// ----------------------------------------------------------------------------
-// 类型分发辅助模板
-// ----------------------------------------------------------------------------
 template <typename T>
 struct LauncherSelector;
 
@@ -329,18 +317,16 @@ struct LauncherSelector;
     }                                                                         \
   };
 
-// 基础类型
 DEFINE_LAUNCHER_SELECTOR(float, LaunchGatherSparseSliceElementsFloat)
 DEFINE_LAUNCHER_SELECTOR(double, LaunchGatherSparseSliceElementsDouble)
 DEFINE_LAUNCHER_SELECTOR(int32_t, LaunchGatherSparseSliceElementsInt32)
 DEFINE_LAUNCHER_SELECTOR(int64_t, LaunchGatherSparseSliceElementsInt64)
 DEFINE_LAUNCHER_SELECTOR(uint8_t, LaunchGatherSparseSliceElementsUInt8)
 DEFINE_LAUNCHER_SELECTOR(uint16_t, LaunchGatherSparseSliceElementsUInt16)
-DEFINE_LAUNCHER_SELECTOR(int8_t, LaunchGatherSparseSliceElementsInt8)   // 新增
-DEFINE_LAUNCHER_SELECTOR(int16_t, LaunchGatherSparseSliceElementsInt16) // 新增
+DEFINE_LAUNCHER_SELECTOR(int8_t, LaunchGatherSparseSliceElementsInt8)
+DEFINE_LAUNCHER_SELECTOR(int16_t, LaunchGatherSparseSliceElementsInt16)
 DEFINE_LAUNCHER_SELECTOR(bool, LaunchGatherSparseSliceElementsBool)
 
-// FP16 特化
 template <>
 struct LauncherSelector<Eigen::half> {
   static void Launch1D(const int64_t* indices, const Eigen::half* values,
@@ -385,7 +371,6 @@ struct LauncherSelector<Eigen::half> {
   }
 };
 
-// BF16 特化
 template <>
 struct LauncherSelector<bfloat16> {
   static void Launch1D(const int64_t* indices, const bfloat16* values,
@@ -432,9 +417,6 @@ struct LauncherSelector<bfloat16> {
 
 #undef DEFINE_LAUNCHER_SELECTOR
 
-// ----------------------------------------------------------------------------
-// MusaSparseSliceOp 主类（无 Thrust，无 __global__ 核函数）
-// ----------------------------------------------------------------------------
 template <typename T>
 class MusaSparseSliceOp : public OpKernel {
  public:
@@ -442,18 +424,15 @@ class MusaSparseSliceOp : public OpKernel {
       : OpKernel(context) {}
 
   void Compute(OpKernelContext* context) override {
-    // 1. 获取输入张量
     const Tensor& indices = context->input(0);
     const Tensor& values = context->input(1);
     const Tensor& dense_shape = context->input(2);
     const Tensor& start = context->input(3);
     const Tensor& size = context->input(4);
 
-    // 2. 解析输入维度
     const int64_t N = indices.dim_size(0);
     const int ndims = indices.dim_size(1);
 
-    // 3. 基础校验
     OP_REQUIRES(context, ndims >= 1 && ndims <= 5,
                 errors::Unimplemented(
                     "MusaSparseSlice only supports 1-5D sparse tensors, got ",
@@ -472,7 +451,6 @@ class MusaSparseSliceOp : public OpKernel {
                 errors::InvalidArgument("Size size must match ndims: ",
                                         size.dim_size(0), " vs ", ndims));
 
-    // 空输入直接返回空输出
     if (N == 0) {
       Tensor* out_indices = nullptr;
       Tensor* out_values = nullptr;
@@ -489,32 +467,25 @@ class MusaSparseSliceOp : public OpKernel {
       return;
     }
 
-    // 4. 获取MUSA流
     musaStream_t raw_stream = GetMusaStreamByCtx(context);
-
-    // 5. 分配设备端临时内存 (使用 allocate_temp 替代 musaMalloc)
     Tensor d_mask_tensor;
     Tensor d_count_tensor;
     Tensor d_pos_tensor;
     Tensor d_block_sums_tensor;
     Tensor d_block_prefix_sums_tensor;
 
-    // 分配 mask: N * bool
     OP_REQUIRES_OK(context, context->allocate_temp(DT_BOOL, TensorShape({N}),
                                                    &d_mask_tensor));
     bool* d_mask = d_mask_tensor.flat<bool>().data();
 
-    // 分配 count: N * int32
     OP_REQUIRES_OK(context, context->allocate_temp(DT_INT32, TensorShape({N}),
                                                    &d_count_tensor));
     int32_t* d_count = d_count_tensor.flat<int32_t>().data();
 
-    // 分配 pos: N * int64
     OP_REQUIRES_OK(context, context->allocate_temp(DT_INT64, TensorShape({N}),
                                                    &d_pos_tensor));
     int64_t* d_pos = d_pos_tensor.flat<int64_t>().data();
 
-    // 6. 调用掩码生成核函数
     if (ndims == 1) {
       LaunchGenerateSparseSliceMask1D(
           indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
@@ -537,15 +508,11 @@ class MusaSparseSliceOp : public OpKernel {
           size.flat<int64_t>().data(), N, d_mask, raw_stream);
     }
 
-    // 7. 纯 MUSA 原生流程替代 Thrust
     const int64_t block_size = 1024;
     const int64_t num_blocks = (N + block_size - 1) / block_size;
 
-    // Step 7.1: Mask 转 Count
     LaunchMaskToCount(d_mask, d_count, N, raw_stream);
 
-    // Step 7.2: 分块扫描（第一阶段）
-    // 分配 block_sums: num_blocks * int64
     OP_REQUIRES_OK(context,
                    context->allocate_temp(DT_INT64, TensorShape({num_blocks}),
                                           &d_block_sums_tensor));
@@ -553,12 +520,9 @@ class MusaSparseSliceOp : public OpKernel {
 
     LaunchBlockScan(d_count, d_pos, d_block_sums, N, block_size, raw_stream);
 
-    // Step 7.3: 块总和扫描（简化版：拷回主机做）
-    // 注意：这里仍然需要 Host 内存进行串行前缀和计算，因为数据量小且依赖性强
     std::vector<int64_t> h_block_sums(num_blocks);
     std::vector<int64_t> h_block_prefix_sums(num_blocks);
 
-    // 同步以确保 d_block_sums 已计算完成
     musaStreamSynchronize(raw_stream);
 
     musaMemcpy(h_block_sums.data(), d_block_sums, num_blocks * sizeof(int64_t),
@@ -569,8 +533,6 @@ class MusaSparseSliceOp : public OpKernel {
       h_block_prefix_sums[i] = h_block_prefix_sums[i - 1] + h_block_sums[i - 1];
     }
 
-    // Step 7.4: 拷回块前缀和并累加
-    // 分配 block_prefix_sums: num_blocks * int64
     OP_REQUIRES_OK(context,
                    context->allocate_temp(DT_INT64, TensorShape({num_blocks}),
                                           &d_block_prefix_sums_tensor));
@@ -583,15 +545,12 @@ class MusaSparseSliceOp : public OpKernel {
     LaunchAddBlockPrefixSum(d_pos, d_block_prefix_sums, N, block_size,
                             raw_stream);
 
-    // Step 7.5: 计算 out_N
-    // 同步以获取最终结果
     musaStreamSynchronize(raw_stream);
 
     int64_t out_N = 0;
     int32_t last_count = 0;
     int64_t last_pos = 0;
 
-    // 如果 N > 0，则读取最后一个元素
     if (N > 0) {
       musaMemcpy(&last_count, d_count + N - 1, sizeof(int32_t),
                  musaMemcpyDeviceToHost);
@@ -600,7 +559,6 @@ class MusaSparseSliceOp : public OpKernel {
       out_N = last_pos + last_count;
     }
 
-    // 8. 分配输出张量
     Tensor* out_indices = nullptr;
     Tensor* out_values = nullptr;
     Tensor* out_dense_shape = nullptr;
@@ -611,12 +569,10 @@ class MusaSparseSliceOp : public OpKernel {
     OP_REQUIRES_OK(context, context->allocate_output(2, TensorShape({ndims}),
                                                      &out_dense_shape));
 
-    // 9. 拷贝size到out_dense_shape
     for (int d = 0; d < ndims; ++d) {
       out_dense_shape->flat<int64_t>()(d) = size.flat<int64_t>()(d);
     }
 
-    // 10. 调用元素收集核函数
     if (out_N > 0) {
       if (ndims == 1) {
         LauncherSelector<T>::Launch1D(
@@ -651,10 +607,6 @@ class MusaSparseSliceOp : public OpKernel {
       }
     }
 
-    // 11. 释放临时内存
-    // 不需要手动 musaFree，Tensor 对象销毁时会自动处理或由 TF 运行时管理
-
-    // 12. 检查错误
     musaError_t err = musaGetLastError();
     OP_REQUIRES(context, err == musaSuccess,
                 errors::Internal("MUSA SparseSlice kernel launch failed: ",
