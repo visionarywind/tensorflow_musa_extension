@@ -337,7 +337,7 @@ class MusaExtractImagePatchesOp : public OpKernel {
 
   // 核心计算函数：每次算子执行都会调用
   void Compute(OpKernelContext* context) override {
-    LOG(ERROR) << "MusaExtractImagePatchesOp entered";
+    // LOG(ERROR) << "MusaExtractImagePatchesOp entered";
 
     // 1. 获取输入张量
     const Tensor& images = context->input(0);
