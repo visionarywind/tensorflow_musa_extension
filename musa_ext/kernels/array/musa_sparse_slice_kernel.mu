@@ -61,16 +61,16 @@ __global__ void ScanLocalKernel(
     int64_t N,
     int64_t blockSize) {
     
-    extern __shared__ int32_t s_data[]; // Shared memory for int32 input
+    extern __shared__ int32_t s_data_i32[]; // Shared memory for int32 input
     
     int tid = threadIdx.x;
     int globalIdx = blockIdx.x * blockSize + tid;
     
     // Load input into shared memory
     if (globalIdx < N) {
-        s_data[tid] = input[globalIdx];
+        s_data_i32[tid] = input[globalIdx];
     } else {
-        s_data[tid] = 0;
+        s_data_i32[tid] = 0;
     }
     __syncthreads();
 
@@ -78,22 +78,22 @@ __global__ void ScanLocalKernel(
     for (int offset = 1; offset < blockSize; offset <<= 1) {
         int32_t t = 0;
         if (tid >= offset) {
-            t = s_data[tid - offset];
+            t = s_data_i32[tid - offset];
         }
         __syncthreads();
         if (tid >= offset) {
-            s_data[tid] += t;
+            s_data_i32[tid] += t;
         }
         __syncthreads();
     }
 
     // Save block sum (inclusive sum of this block)
     if (tid == blockSize - 1) {
-        block_sums[blockIdx.x] = static_cast<int64_t>(s_data[tid]);
+        block_sums[blockIdx.x] = static_cast<int64_t>(s_data_i32[tid]);
     }
 
     // Convert to Exclusive Scan result for this block
-    int32_t exclusive_val = (tid == 0) ? 0 : s_data[tid - 1];
+    int32_t exclusive_val = (tid == 0) ? 0 : s_data_i32[tid - 1];
     
     if (globalIdx < N) {
         output[globalIdx] = static_cast<int64_t>(exclusive_val);
@@ -218,37 +218,44 @@ extern "C" {
 #define OPTIMAL_THREADS 256
 #define OPTIMAL_BLOCKS(count) (((count) + OPTIMAL_THREADS - 1) / OPTIMAL_THREADS)
 
-// --- Fused Mask and Count Launchers ---
-template <int ndims>
-void LaunchGenerateMaskAndCountImpl(
-    const int64_t* indices,
-    const int64_t* start,
-    const int64_t* size,
-    int64_t N,
-    bool* mask,
-    int32_t* count,
-    musaStream_t stream) {
-    
-    if (N == 0) return;
-    const int blocks = OPTIMAL_BLOCKS(N);
-    GenerateMaskAndCountKernel<ndims><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
-        indices, start, size, N, mask, count);
-}
+// --- Fused Mask and Count Launchers (Wrappers) ---
+// Note: Template definitions are above, outside extern "C". 
+// We instantiate them here via helper functions or direct calls if we move templates out.
+// To keep it clean, we define the template implementations ABOVE extern "C" and call them here.
+// However, since templates must be visible, we defined them above. 
+// Now we just call them. But wait, templates with C linkage is the error.
+// Solution: The templates are defined with C++ linkage (default). The functions calling them are inside extern "C".
+// This is valid as long as the templates themselves are not declared extern "C".
 
 void LaunchGenerateSparseSliceMaskAndCount1D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCountImpl<1>(indices, start, size, N, mask, count, stream);
+    if (N == 0) return;
+    const int blocks = OPTIMAL_BLOCKS(N);
+    GenerateMaskAndCountKernel<1><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
+        indices, start, size, N, mask, count);
 }
 void LaunchGenerateSparseSliceMaskAndCount2D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCountImpl<2>(indices, start, size, N, mask, count, stream);
+    if (N == 0) return;
+    const int blocks = OPTIMAL_BLOCKS(N);
+    GenerateMaskAndCountKernel<2><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
+        indices, start, size, N, mask, count);
 }
 void LaunchGenerateSparseSliceMaskAndCount3D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCountImpl<3>(indices, start, size, N, mask, count, stream);
+    if (N == 0) return;
+    const int blocks = OPTIMAL_BLOCKS(N);
+    GenerateMaskAndCountKernel<3><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
+        indices, start, size, N, mask, count);
 }
 void LaunchGenerateSparseSliceMaskAndCount4D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCountImpl<4>(indices, start, size, N, mask, count, stream);
+    if (N == 0) return;
+    const int blocks = OPTIMAL_BLOCKS(N);
+    GenerateMaskAndCountKernel<4><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
+        indices, start, size, N, mask, count);
 }
 void LaunchGenerateSparseSliceMaskAndCount5D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCountImpl<5>(indices, start, size, N, mask, count, stream);
+    if (N == 0) return;
+    const int blocks = OPTIMAL_BLOCKS(N);
+    GenerateMaskAndCountKernel<5><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
+        indices, start, size, N, mask, count);
 }
 
 // --- Scan Pipeline ---
@@ -297,77 +304,73 @@ void LaunchGetTotalCount(
         d_block_sums, d_total_count, num_blocks);
 }
 
-// --- Gather Launchers ---
-template <typename T, int ndims>
-void LaunchGatherImpl(
-    const int64_t* indices,
-    const T* values,
-    const int64_t* start,
-    const bool* mask,
-    const int64_t* pos,
-    int64_t N,
-    int64_t* out_indices,
-    T* out_values,
-    musaStream_t stream) {
-    
-    if (N == 0) return;
-    const int blocks = OPTIMAL_BLOCKS(N);
-    GatherSparseSliceElementsKernel<T, ndims><<<blocks, OPTIMAL_THREADS, 0, stream>>>(
-        indices, values, start, mask, pos, N, out_indices, out_values);
-}
+// --- Gather Launchers (Wrappers) ---
+// We define a template helper outside extern "C" is not possible if we want to call it from here directly without exposing it.
+// Instead, we instantiate the specific versions we need right here inside extern "C" by using a macro that expands to non-template functions?
+// No, the cleanest way is to define the template kernel above (done) and then create non-template wrapper functions for each type/dim combination.
 
-// Macro to define C wrappers for Gather
-#define DEFINE_GATHER_LAUNCHER(T, ndims, Name) \
+#define DEFINE_GATHER_LAUNCHER_WRAPPER(T, ndims, Name) \
   void Name(const int64_t* indices, const T* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, T* out_values, musaStream_t stream) { \
-      LaunchGatherImpl<T, ndims>(indices, values, start, mask, pos, N, out_indices, out_values, stream); \
+      if (N == 0) return; \
+      const int blocks = OPTIMAL_BLOCKS(N); \
+      GatherSparseSliceElementsKernel<T, ndims><<<blocks, OPTIMAL_THREADS, 0, stream>>>( \
+          indices, values, start, mask, pos, N, out_indices, out_values); \
   }
 
-#define DEFINE_GATHER_FOR_ALL_NDIMS(T, Prefix) \
-  DEFINE_GATHER_LAUNCHER(T, 1, Prefix##1D) \
-  DEFINE_GATHER_LAUNCHER(T, 2, Prefix##2D) \
-  DEFINE_GATHER_LAUNCHER(T, 3, Prefix##3D) \
-  DEFINE_GATHER_LAUNCHER(T, 4, Prefix##4D) \
-  DEFINE_GATHER_LAUNCHER(T, 5, Prefix##5D)
+#define DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(T, Prefix) \
+  DEFINE_GATHER_LAUNCHER_WRAPPER(T, 1, Prefix##1D) \
+  DEFINE_GATHER_LAUNCHER_WRAPPER(T, 2, Prefix##2D) \
+  DEFINE_GATHER_LAUNCHER_WRAPPER(T, 3, Prefix##3D) \
+  DEFINE_GATHER_LAUNCHER_WRAPPER(T, 4, Prefix##4D) \
+  DEFINE_GATHER_LAUNCHER_WRAPPER(T, 5, Prefix##5D)
 
-DEFINE_GATHER_FOR_ALL_NDIMS(float, LaunchGatherSparseSliceElementsFloat)
-DEFINE_GATHER_FOR_ALL_NDIMS(double, LaunchGatherSparseSliceElementsDouble)
-DEFINE_GATHER_FOR_ALL_NDIMS(int32_t, LaunchGatherSparseSliceElementsInt32)
-DEFINE_GATHER_FOR_ALL_NDIMS(int64_t, LaunchGatherSparseSliceElementsInt64)
-DEFINE_GATHER_FOR_ALL_NDIMS(uint8_t, LaunchGatherSparseSliceElementsUInt8)
-DEFINE_GATHER_FOR_ALL_NDIMS(uint16_t, LaunchGatherSparseSliceElementsUInt16)
-DEFINE_GATHER_FOR_ALL_NDIMS(int8_t, LaunchGatherSparseSliceElementsInt8)
-DEFINE_GATHER_FOR_ALL_NDIMS(int16_t, LaunchGatherSparseSliceElementsInt16)
-DEFINE_GATHER_FOR_ALL_NDIMS(bool, LaunchGatherSparseSliceElementsBool)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(float, LaunchGatherSparseSliceElementsFloat)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(double, LaunchGatherSparseSliceElementsDouble)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(int32_t, LaunchGatherSparseSliceElementsInt32)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(int64_t, LaunchGatherSparseSliceElementsInt64)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(uint8_t, LaunchGatherSparseSliceElementsUInt8)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(uint16_t, LaunchGatherSparseSliceElementsUInt16)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(int8_t, LaunchGatherSparseSliceElementsInt8)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(int16_t, LaunchGatherSparseSliceElementsInt16)
+DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER(bool, LaunchGatherSparseSliceElementsBool)
 
 // Half Wrappers
-#define DEFINE_HALF_GATHER_LAUNCHER(ndims, Name) \
+#define DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(ndims, Name) \
   void Name(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream) { \
-      LaunchGatherImpl<half, ndims>(indices, reinterpret_cast<const half*>(values), start, mask, pos, N, out_indices, reinterpret_cast<half*>(out_values), stream); \
+      if (N == 0) return; \
+      const int blocks = OPTIMAL_BLOCKS(N); \
+      GatherSparseSliceElementsKernel<half, ndims><<<blocks, OPTIMAL_THREADS, 0, stream>>>( \
+          indices, reinterpret_cast<const half*>(values), start, mask, pos, N, \
+          out_indices, reinterpret_cast<half*>(out_values)); \
   }
 
-DEFINE_HALF_GATHER_LAUNCHER(1, LaunchGatherSparseSliceElementsHalf1D)
-DEFINE_HALF_GATHER_LAUNCHER(2, LaunchGatherSparseSliceElementsHalf2D)
-DEFINE_HALF_GATHER_LAUNCHER(3, LaunchGatherSparseSliceElementsHalf3D)
-DEFINE_HALF_GATHER_LAUNCHER(4, LaunchGatherSparseSliceElementsHalf4D)
-DEFINE_HALF_GATHER_LAUNCHER(5, LaunchGatherSparseSliceElementsHalf5D)
+DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(1, LaunchGatherSparseSliceElementsHalf1D)
+DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(2, LaunchGatherSparseSliceElementsHalf2D)
+DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(3, LaunchGatherSparseSliceElementsHalf3D)
+DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(4, LaunchGatherSparseSliceElementsHalf4D)
+DEFINE_HALF_GATHER_LAUNCHER_WRAPPER(5, LaunchGatherSparseSliceElementsHalf5D)
 
 // BFloat16 Wrappers
-#define DEFINE_BF16_GATHER_LAUNCHER(ndims, Name) \
+#define DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(ndims, Name) \
   void Name(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream) { \
-      LaunchGatherImpl<__mt_bfloat16, ndims>(indices, reinterpret_cast<const __mt_bfloat16*>(values), start, mask, pos, N, out_indices, reinterpret_cast<__mt_bfloat16*>(out_values), stream); \
+      if (N == 0) return; \
+      const int blocks = OPTIMAL_BLOCKS(N); \
+      GatherSparseSliceElementsKernel<__mt_bfloat16, ndims><<<blocks, OPTIMAL_THREADS, 0, stream>>>( \
+          indices, reinterpret_cast<const __mt_bfloat16*>(values), start, mask, pos, N, \
+          out_indices, reinterpret_cast<__mt_bfloat16*>(out_values)); \
   }
 
-DEFINE_BF16_GATHER_LAUNCHER(1, LaunchGatherSparseSliceElementsBFloat161D)
-DEFINE_BF16_GATHER_LAUNCHER(2, LaunchGatherSparseSliceElementsBFloat162D)
-DEFINE_BF16_GATHER_LAUNCHER(3, LaunchGatherSparseSliceElementsBFloat163D)
-DEFINE_BF16_GATHER_LAUNCHER(4, LaunchGatherSparseSliceElementsBFloat164D)
-DEFINE_BF16_GATHER_LAUNCHER(5, LaunchGatherSparseSliceElementsBFloat165D)
+DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(1, LaunchGatherSparseSliceElementsBFloat161D)
+DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(2, LaunchGatherSparseSliceElementsBFloat162D)
+DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(3, LaunchGatherSparseSliceElementsBFloat163D)
+DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(4, LaunchGatherSparseSliceElementsBFloat164D)
+DEFINE_BF16_GATHER_LAUNCHER_WRAPPER(5, LaunchGatherSparseSliceElementsBFloat165D)
 
 #undef OPTIMAL_THREADS
 #undef OPTIMAL_BLOCKS
-#undef DEFINE_GATHER_LAUNCHER
-#undef DEFINE_GATHER_FOR_ALL_NDIMS
-#undef DEFINE_HALF_GATHER_LAUNCHER
-#undef DEFINE_BF16_GATHER_LAUNCHER
+#undef DEFINE_GATHER_LAUNCHER_WRAPPER
+#undef DEFINE_GATHER_FOR_ALL_NDIMS_WRAPPER
+#undef DEFINE_HALF_GATHER_LAUNCHER_WRAPPER
+#undef DEFINE_BF16_GATHER_LAUNCHER_WRAPPER
 
 }  // extern "C"
