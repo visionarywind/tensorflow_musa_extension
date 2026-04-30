@@ -35,15 +35,13 @@ void LaunchGetTotalCount(
     int64_t num_blocks,
     musaStream_t stream);
 
-// Gather Launchers (Same signatures as before)
+// Gather Launchers
 void LaunchGatherSparseSliceElementsFloat1D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsFloat2D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsFloat3D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsFloat4D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsFloat5D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 
-// ... (Declare other types similarly or include the header that declares them) ...
-// For brevity, assuming all other LaunchGather... are declared here as in original file.
 void LaunchGatherSparseSliceElementsDouble1D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsDouble2D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
 void LaunchGatherSparseSliceElementsDouble3D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
@@ -309,7 +307,7 @@ class MusaSparseSliceOp : public OpKernel {
     Tensor d_pos_tensor;
     Tensor d_block_sums_tensor;
     Tensor d_block_prefix_sums_tensor;
-    Tensor d_total_count_tensor; // Device scalar for total count
+    Tensor d_total_count_tensor;
 
     OP_REQUIRES_OK(context, context->allocate_temp(DT_BOOL, TensorShape({N}),
                                                    &d_mask_tensor));
@@ -323,7 +321,7 @@ class MusaSparseSliceOp : public OpKernel {
                                                    &d_pos_tensor));
     int64_t* d_pos = d_pos_tensor.flat<int64_t>().data();
 
-    const int64_t block_size = 256; // Match Kernel OPTIMAL_THREADS
+    const int64_t block_size = 256;
     const int64_t num_blocks = (N + block_size - 1) / block_size;
 
     OP_REQUIRES_OK(context,
@@ -375,7 +373,6 @@ class MusaSparseSliceOp : public OpKernel {
     LaunchGetTotalCount(d_block_sums, d_total_count, num_blocks, raw_stream);
 
     // 4. Copy Total Count to Host to allocate output
-    // NOTE: This is the ONLY synchronization point required by TF Op interface for dynamic shapes.
     int64_t out_N = 0;
     musaMemcpyAsync(&out_N, d_total_count, sizeof(int64_t),
                     musaMemcpyDeviceToHost, raw_stream);

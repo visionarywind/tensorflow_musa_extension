@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 // -----------------------------------------------------------------------------
-// Helper: Atomic Add for int64_t (if needed, though scan is preferred)
+// Device Helpers
 // -----------------------------------------------------------------------------
 __device__ int64_t atomicAdd(int64_t* address, int64_t val) {
     unsigned long long* address_as_ull = reinterpret_cast<unsigned long long*>(address);
@@ -20,7 +20,6 @@ __device__ int64_t atomicAdd(int64_t* address, int64_t val) {
 
 // -----------------------------------------------------------------------------
 // Kernel 1: Generate Mask AND Count (Fused)
-// Writes mask to global memory and count to global memory
 // -----------------------------------------------------------------------------
 template <int ndims>
 __global__ void GenerateMaskAndCountKernel(
@@ -52,8 +51,8 @@ __global__ void GenerateMaskAndCountKernel(
 }
 
 // -----------------------------------------------------------------------------
-// Kernel 2: Parallel Exclusive Scan (Two-Pass Approach)
-// Pass 1: Local Scan within blocks
+// Kernel 2: Parallel Exclusive Scan - Local Step
+// Input: int32_t counts, Output: int64_t pos (exclusive scan result)
 // -----------------------------------------------------------------------------
 __global__ void ScanLocalKernel(
     const int32_t* __restrict__ input,
@@ -62,39 +61,39 @@ __global__ void ScanLocalKernel(
     int64_t N,
     int64_t blockSize) {
     
-    extern __shared__ int32_t temp[];
+    extern __shared__ int32_t s_data[]; // Shared memory for int32 input
     
     int tid = threadIdx.x;
     int globalIdx = blockIdx.x * blockSize + tid;
     
     // Load input into shared memory
     if (globalIdx < N) {
-        temp[tid] = input[globalIdx];
+        s_data[tid] = input[globalIdx];
     } else {
-        temp[tid] = 0;
+        s_data[tid] = 0;
     }
     __syncthreads();
 
-    // Inclusive Scan (Hillis-Steele)
+    // Inclusive Scan (Hillis-Steele) on shared memory
     for (int offset = 1; offset < blockSize; offset <<= 1) {
         int32_t t = 0;
         if (tid >= offset) {
-            t = temp[tid - offset];
+            t = s_data[tid - offset];
         }
         __syncthreads();
         if (tid >= offset) {
-            temp[tid] += t;
+            s_data[tid] += t;
         }
         __syncthreads();
     }
 
-    // Save block sum
+    // Save block sum (inclusive sum of this block)
     if (tid == blockSize - 1) {
-        block_sums[blockIdx.x] = temp[tid];
+        block_sums[blockIdx.x] = static_cast<int64_t>(s_data[tid]);
     }
 
     // Convert to Exclusive Scan result for this block
-    int32_t exclusive_val = (tid == 0) ? 0 : temp[tid - 1];
+    int32_t exclusive_val = (tid == 0) ? 0 : s_data[tid - 1];
     
     if (globalIdx < N) {
         output[globalIdx] = static_cast<int64_t>(exclusive_val);
@@ -103,6 +102,7 @@ __global__ void ScanLocalKernel(
 
 // -----------------------------------------------------------------------------
 // Kernel 3: Scan Block Sums (Small array, single block)
+// Input/Output: int64_t
 // -----------------------------------------------------------------------------
 __global__ void ScanBlockSumsKernel(
     const int64_t* __restrict__ input,
@@ -111,24 +111,24 @@ __global__ void ScanBlockSumsKernel(
     
     if (blockIdx.x > 0) return;
     
-    extern __shared__ int64_t temp[];
+    extern __shared__ int64_t s_data_i64[]; // Shared memory for int64
     int tid = threadIdx.x;
     
-    if (tid < n) temp[tid] = input[tid];
-    else temp[tid] = 0;
+    if (tid < n) s_data_i64[tid] = input[tid];
+    else s_data_i64[tid] = 0;
     __syncthreads();
     
     // Inclusive Scan
     for (int offset = 1; offset < blockDim.x; offset <<= 1) {
         int64_t t = 0;
-        if (tid >= offset) t = temp[tid - offset];
+        if (tid >= offset) t = s_data_i64[tid - offset];
         __syncthreads();
-        if (tid >= offset) temp[tid] += t;
+        if (tid >= offset) s_data_i64[tid] += t;
         __syncthreads();
     }
     
     // Convert to Exclusive
-    int64_t exclusive_val = (tid == 0) ? 0 : temp[tid - 1];
+    int64_t exclusive_val = (tid == 0) ? 0 : s_data_i64[tid - 1];
     
     if (tid < n) {
         output[tid] = exclusive_val;
@@ -181,19 +181,7 @@ __global__ void GatherSparseSliceElementsKernel(
 }
 
 // -----------------------------------------------------------------------------
-// Kernel 6: Get Total Count (Last element of scanned pos + last count)
-// Actually, total count is the last element of the INCLUSIVE scan of counts.
-// Or simply sum of all counts.
-// We can compute this by reading the last block sum and adding it?
-// Easier: Launch a small kernel to sum the block_sums or read the last pos + last count.
-// Note: pos is exclusive scan. pos[i] + count[i] is the inclusive scan value.
-// The total count is max(pos[i] + count[i]).
-// Since pos is monotonic increasing for valid elements, the last valid element has the max index.
-// However, the last element in array might not be valid.
-// Correct way: The total count is the last element of the inclusive scan of the entire count array.
-// In our two-pass scan:
-// Total = BlockPrefixSums[num_blocks-1] + LocalInclusiveSumOfLastBlock?
-// Simpler: Just sum the block_sums array on GPU.
+// Kernel 6: Sum Block Sums to get Total Count
 // -----------------------------------------------------------------------------
 __global__ void SumBlockSumsKernel(
     const int64_t* __restrict__ block_sums,
@@ -202,34 +190,37 @@ __global__ void SumBlockSumsKernel(
     
     if (blockIdx.x > 0) return;
     
-    extern __shared__ int64_t temp[];
+    extern __shared__ int64_t s_reduce[];
     int tid = threadIdx.x;
     
-    if (tid < num_blocks) temp[tid] = block_sums[tid];
-    else temp[tid] = 0;
+    if (tid < num_blocks) s_reduce[tid] = block_sums[tid];
+    else s_reduce[tid] = 0;
     __syncthreads();
     
     // Reduction Sum
     for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
         if (tid < offset) {
-            temp[tid] += temp[tid + offset];
+            s_reduce[tid] += s_reduce[tid + offset];
         }
         __syncthreads();
     }
     
     if (tid == 0) {
-        *total_count = temp[0];
+        *total_count = s_reduce[0];
     }
 }
 
+// -----------------------------------------------------------------------------
+// C Interface Implementations
+// -----------------------------------------------------------------------------
 extern "C" {
 
 #define OPTIMAL_THREADS 256
 #define OPTIMAL_BLOCKS(count) (((count) + OPTIMAL_THREADS - 1) / OPTIMAL_THREADS)
 
-// Fused Mask Generation and Counting
+// --- Fused Mask and Count Launchers ---
 template <int ndims>
-void LaunchGenerateMaskAndCount(
+void LaunchGenerateMaskAndCountImpl(
     const int64_t* indices,
     const int64_t* start,
     const int64_t* size,
@@ -244,36 +235,51 @@ void LaunchGenerateMaskAndCount(
         indices, start, size, N, mask, count);
 }
 
-// Full Parallel Scan Pipeline
-void LaunchParallelExclusiveScan(
-    const int32_t* d_input,
-    int64_t* d_output,
+void LaunchGenerateSparseSliceMaskAndCount1D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
+    LaunchGenerateMaskAndCountImpl<1>(indices, start, size, N, mask, count, stream);
+}
+void LaunchGenerateSparseSliceMaskAndCount2D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
+    LaunchGenerateMaskAndCountImpl<2>(indices, start, size, N, mask, count, stream);
+}
+void LaunchGenerateSparseSliceMaskAndCount3D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
+    LaunchGenerateMaskAndCountImpl<3>(indices, start, size, N, mask, count, stream);
+}
+void LaunchGenerateSparseSliceMaskAndCount4D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
+    LaunchGenerateMaskAndCountImpl<4>(indices, start, size, N, mask, count, stream);
+}
+void LaunchGenerateSparseSliceMaskAndCount5D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
+    LaunchGenerateMaskAndCountImpl<5>(indices, start, size, N, mask, count, stream);
+}
+
+// --- Scan Pipeline ---
+void LaunchFullScanPipeline(
+    const int32_t* d_counts,
+    int64_t* d_pos,
     int64_t* d_block_sums,
     int64_t* d_block_prefix_sums,
     int64_t N,
-    int64_t blockSize,
+    int64_t block_size,
     int64_t num_blocks,
     musaStream_t stream) {
     
     if (N == 0) return;
 
     // Step 1: Local Exclusive Scan
-    ScanLocalKernel<<<num_blocks, blockSize, blockSize * sizeof(int32_t), stream>>>(
-        d_input, d_output, d_block_sums, N, blockSize);
+    ScanLocalKernel<<<num_blocks, block_size, block_size * sizeof(int32_t), stream>>>(
+        d_counts, d_pos, d_block_sums, N, block_size);
 
     if (num_blocks > 1) {
         // Step 2: Scan Block Sums
-        ScanBlockSumsKernel<<<1, blockSize, blockSize * sizeof(int64_t), stream>>>(
+        ScanBlockSumsKernel<<<1, block_size, block_size * sizeof(int64_t), stream>>>(
             d_block_sums, d_block_prefix_sums, num_blocks);
         
         // Step 3: Add Offsets
         AddOffsetsKernel<<<num_blocks, OPTIMAL_THREADS, 0, stream>>>(
-            d_output, d_block_prefix_sums, N, blockSize);
+            d_pos, d_block_prefix_sums, N, block_size);
     }
 }
 
-// Calculate Total Count from Block Sums
-void LaunchCalculateTotalCount(
+void LaunchGetTotalCount(
     const int64_t* d_block_sums,
     int64_t* d_total_count,
     int64_t num_blocks,
@@ -284,18 +290,16 @@ void LaunchCalculateTotalCount(
         return;
     }
     
-    // Use a single block to reduce the block_sums array
-    int threads = 256;
+    int threads = OPTIMAL_THREADS;
     if (num_blocks < threads) threads = num_blocks;
-    // Ensure power of 2 for shared mem reduction simplicity or handle generally
-    // For simplicity, use 256 threads and handle bounds in kernel
+    
     SumBlockSumsKernel<<<1, threads, threads * sizeof(int64_t), stream>>>(
         d_block_sums, d_total_count, num_blocks);
 }
 
-// Gather Launchers
+// --- Gather Launchers ---
 template <typename T, int ndims>
-void LaunchGather(
+void LaunchGatherImpl(
     const int64_t* indices,
     const T* values,
     const int64_t* start,
@@ -312,36 +316,10 @@ void LaunchGather(
         indices, values, start, mask, pos, N, out_indices, out_values);
 }
 
-// Explicit Instantiations for C Interface
-#define DEFINE_MASK_LAUNCHER(ndims, Name) \
-  void Name(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, musaStream_t stream) { \
-      // Deprecated, use fused version \
-  }
-
-// We will replace the old separate calls with the new fused call in the .cc file.
-// So we don't need the old LaunchGenerateSparseSliceMaskXD functions anymore if we update .cc.
-// But to maintain compatibility with the provided .cc structure, I will provide the fused launcher.
-
-void LaunchGenerateSparseSliceMaskAndCount1D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCount<1>(indices, start, size, N, mask, count, stream);
-}
-void LaunchGenerateSparseSliceMaskAndCount2D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCount<2>(indices, start, size, N, mask, count, stream);
-}
-void LaunchGenerateSparseSliceMaskAndCount3D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCount<3>(indices, start, size, N, mask, count, stream);
-}
-void LaunchGenerateSparseSliceMaskAndCount4D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCount<4>(indices, start, size, N, mask, count, stream);
-}
-void LaunchGenerateSparseSliceMaskAndCount5D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream) {
-    LaunchGenerateMaskAndCount<5>(indices, start, size, N, mask, count, stream);
-}
-
-// Gather Launchers (Same as before but using the new template)
+// Macro to define C wrappers for Gather
 #define DEFINE_GATHER_LAUNCHER(T, ndims, Name) \
   void Name(const int64_t* indices, const T* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, T* out_values, musaStream_t stream) { \
-      LaunchGather<T, ndims>(indices, values, start, mask, pos, N, out_indices, out_values, stream); \
+      LaunchGatherImpl<T, ndims>(indices, values, start, mask, pos, N, out_indices, out_values, stream); \
   }
 
 #define DEFINE_GATHER_FOR_ALL_NDIMS(T, Prefix) \
@@ -361,34 +339,35 @@ DEFINE_GATHER_FOR_ALL_NDIMS(int8_t, LaunchGatherSparseSliceElementsInt8)
 DEFINE_GATHER_FOR_ALL_NDIMS(int16_t, LaunchGatherSparseSliceElementsInt16)
 DEFINE_GATHER_FOR_ALL_NDIMS(bool, LaunchGatherSparseSliceElementsBool)
 
-// Half and BFloat16 wrappers remain similar, just calling the template with correct type.
-// For brevity, I assume the previous definitions for Half/BFloat16 are kept or adapted similarly.
-// ... (Keep the Half/BFloat16 definitions from original code, adapting them to call LaunchGather) ...
+// Half Wrappers
+#define DEFINE_HALF_GATHER_LAUNCHER(ndims, Name) \
+  void Name(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream) { \
+      LaunchGatherImpl<half, ndims>(indices, reinterpret_cast<const half*>(values), start, mask, pos, N, out_indices, reinterpret_cast<half*>(out_values), stream); \
+  }
 
-// Helper for Scan Pipeline
-void LaunchFullScanPipeline(
-    const int32_t* d_counts,
-    int64_t* d_pos,
-    int64_t* d_block_sums,
-    int64_t* d_block_prefix_sums,
-    int64_t N,
-    int64_t block_size,
-    int64_t num_blocks,
-    musaStream_t stream) {
-    
-    LaunchParallelExclusiveScan(d_counts, d_pos, d_block_sums, d_block_prefix_sums, N, block_size, num_blocks, stream);
-}
+DEFINE_HALF_GATHER_LAUNCHER(1, LaunchGatherSparseSliceElementsHalf1D)
+DEFINE_HALF_GATHER_LAUNCHER(2, LaunchGatherSparseSliceElementsHalf2D)
+DEFINE_HALF_GATHER_LAUNCHER(3, LaunchGatherSparseSliceElementsHalf3D)
+DEFINE_HALF_GATHER_LAUNCHER(4, LaunchGatherSparseSliceElementsHalf4D)
+DEFINE_HALF_GATHER_LAUNCHER(5, LaunchGatherSparseSliceElementsHalf5D)
 
-void LaunchGetTotalCount(
-    const int64_t* d_block_sums,
-    int64_t* d_total_count,
-    int64_t num_blocks,
-    musaStream_t stream) {
-    
-    LaunchCalculateTotalCount(d_block_sums, d_total_count, num_blocks, stream);
-}
+// BFloat16 Wrappers
+#define DEFINE_BF16_GATHER_LAUNCHER(ndims, Name) \
+  void Name(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream) { \
+      LaunchGatherImpl<__mt_bfloat16, ndims>(indices, reinterpret_cast<const __mt_bfloat16*>(values), start, mask, pos, N, out_indices, reinterpret_cast<__mt_bfloat16*>(out_values), stream); \
+  }
+
+DEFINE_BF16_GATHER_LAUNCHER(1, LaunchGatherSparseSliceElementsBFloat161D)
+DEFINE_BF16_GATHER_LAUNCHER(2, LaunchGatherSparseSliceElementsBFloat162D)
+DEFINE_BF16_GATHER_LAUNCHER(3, LaunchGatherSparseSliceElementsBFloat163D)
+DEFINE_BF16_GATHER_LAUNCHER(4, LaunchGatherSparseSliceElementsBFloat164D)
+DEFINE_BF16_GATHER_LAUNCHER(5, LaunchGatherSparseSliceElementsBFloat165D)
 
 #undef OPTIMAL_THREADS
 #undef OPTIMAL_BLOCKS
+#undef DEFINE_GATHER_LAUNCHER
+#undef DEFINE_GATHER_FOR_ALL_NDIMS
+#undef DEFINE_HALF_GATHER_LAUNCHER
+#undef DEFINE_BF16_GATHER_LAUNCHER
 
 }  // extern "C"
