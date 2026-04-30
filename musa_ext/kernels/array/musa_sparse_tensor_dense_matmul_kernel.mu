@@ -60,7 +60,7 @@ __global__ void ComputeRowCountsKernel(
 // ============================================================================
 // 辅助核函数 2：Mask 转 Count（复用自 SparseSlice）
 // ============================================================================
-__global__ void MaskToCountKernel(const bool* __restrict__ mask, int32_t* __restrict__ count, int64_t N) {
+__global__ void SpMMMaskToCountKernel(const bool* __restrict__ mask, int32_t* __restrict__ count, int64_t N) {
     const int64_t tid = blockIdx.x * 256 + threadIdx.x;
     if (tid >= N) return;
     count[tid] = mask[tid] ? 1 : 0;
@@ -69,7 +69,7 @@ __global__ void MaskToCountKernel(const bool* __restrict__ mask, int32_t* __rest
 // ============================================================================
 // 辅助核函数 3：分块 Exclusive Scan（复用自 SparseSlice）
 // ============================================================================
-__global__ void BlockScanKernel(const int32_t* __restrict__ count, int64_t* __restrict__ pos, int64_t* __restrict__ block_sums, int64_t N, int64_t block_size) {
+__global__ void SpMMBlockScanKernel(const int32_t* __restrict__ count, int64_t* __restrict__ pos, int64_t* __restrict__ block_sums, int64_t N, int64_t block_size) {
     const int tid = threadIdx.x;
     const int block = blockIdx.x;
     __shared__ int64_t sh[1024];
@@ -112,7 +112,7 @@ __global__ void BlockScanKernel(const int32_t* __restrict__ count, int64_t* __re
 // ============================================================================
 // 辅助核函数 4：累加块前缀和（复用自 SparseSlice）
 // ============================================================================
-__global__ void AddBlockPrefixSumKernel(int64_t* __restrict__ pos, const int64_t* __restrict__ block_prefix_sums, int64_t N, int64_t block_size) {
+__global__ void SpMMAddBlockPrefixSumKernel(int64_t* __restrict__ pos, const int64_t* __restrict__ block_prefix_sums, int64_t N, int64_t block_size) {
     const int64_t tid = blockIdx.x * 256 + threadIdx.x;
     if (tid >= N) return;
 
@@ -206,22 +206,22 @@ void LaunchComputeRowCounts(const int64_t* indices, int64_t nnz, int64_t M, int3
     ComputeRowCountsKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(indices, nnz, M, row_counts);
 }
 
-void LaunchMaskToCount(const bool* mask, int32_t* count, int64_t N, musaStream_t stream) {
+void LaunchSpMMMaskToCount(const bool* mask, int32_t* count, int64_t N, musaStream_t stream) {
     if (N == 0) return;
     const int blocks = OPTIMAL_BLOCKS(N);
-    MaskToCountKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(mask, count, N);
+    SpMMMaskToCountKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(mask, count, N);
 }
 
-void LaunchBlockScan(const int32_t* count, int64_t* pos, int64_t* block_sums, int64_t N, int64_t block_size, musaStream_t stream) {
+void LaunchSpMMBlockScan(const int32_t* count, int64_t* pos, int64_t* block_sums, int64_t N, int64_t block_size, musaStream_t stream) {
     if (N == 0) return;
     const int64_t num_blocks = (N + block_size - 1) / block_size;
-    BlockScanKernel<<<num_blocks, 1024, 0, stream>>>(count, pos, block_sums, N, block_size);
+    SpMMBlockScanKernel<<<num_blocks, 1024, 0, stream>>>(count, pos, block_sums, N, block_size);
 }
 
-void LaunchAddBlockPrefixSum(int64_t* pos, const int64_t* block_prefix_sums, int64_t N, int64_t block_size, musaStream_t stream) {
+void LaunchSpMMAddBlockPrefixSum(int64_t* pos, const int64_t* block_prefix_sums, int64_t N, int64_t block_size, musaStream_t stream) {
     if (N == 0) return;
     const int blocks = OPTIMAL_BLOCKS(N);
-    AddBlockPrefixSumKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(pos, block_prefix_sums, N, block_size);
+    SpMMAddBlockPrefixSumKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(pos, block_prefix_sums, N, block_size);
 }
 
 void LaunchFillCSR(const int64_t* indices, const float* values, int64_t nnz, int64_t* row_ptr, int64_t* col_idx, float* csr_values, musaStream_t stream) {
