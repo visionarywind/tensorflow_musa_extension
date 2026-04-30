@@ -523,10 +523,10 @@ class MusaSparseSliceOp : public OpKernel {
     std::vector<int64_t> h_block_sums(num_blocks);
     std::vector<int64_t> h_block_prefix_sums(num_blocks);
 
+    musaMemcpyAsync(h_block_sums.data(), d_block_sums,
+                    num_blocks * sizeof(int64_t), musaMemcpyDeviceToHost,
+                    raw_stream);
     musaStreamSynchronize(raw_stream);
-
-    musaMemcpy(h_block_sums.data(), d_block_sums, num_blocks * sizeof(int64_t),
-               musaMemcpyDeviceToHost);
 
     h_block_prefix_sums[0] = 0;
     for (int64_t i = 1; i < num_blocks; ++i) {
@@ -539,23 +539,21 @@ class MusaSparseSliceOp : public OpKernel {
     int64_t* d_block_prefix_sums =
         d_block_prefix_sums_tensor.flat<int64_t>().data();
 
-    musaMemcpy(d_block_prefix_sums, h_block_prefix_sums.data(),
-               num_blocks * sizeof(int64_t), musaMemcpyHostToDevice);
-
+    musaMemcpyAsync(d_block_prefix_sums, h_block_prefix_sums.data(),
+                    num_blocks * sizeof(int64_t), musaMemcpyHostToDevice,
+                    raw_stream);
     LaunchAddBlockPrefixSum(d_pos, d_block_prefix_sums, N, block_size,
                             raw_stream);
 
-    musaStreamSynchronize(raw_stream);
-
     int64_t out_N = 0;
-    int32_t last_count = 0;
-    int64_t last_pos = 0;
-
     if (N > 0) {
-      musaMemcpy(&last_count, d_count + N - 1, sizeof(int32_t),
-                 musaMemcpyDeviceToHost);
-      musaMemcpy(&last_pos, d_pos + N - 1, sizeof(int64_t),
-                 musaMemcpyDeviceToHost);
+      int32_t last_count = 0;
+      int64_t last_pos = 0;
+      musaMemcpyAsync(&last_count, d_count + N - 1, sizeof(int32_t),
+                      musaMemcpyDeviceToHost, raw_stream);
+      musaMemcpyAsync(&last_pos, d_pos + N - 1, sizeof(int64_t),
+                      musaMemcpyDeviceToHost, raw_stream);
+      musaStreamSynchronize(raw_stream);
       out_N = last_pos + last_count;
     }
 

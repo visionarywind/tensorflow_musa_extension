@@ -103,10 +103,9 @@ class MusaSparseTensorDenseMatMulOp : public OpKernel {
     std::vector<int32_t> h_row_counts(M);
     std::vector<int64_t> h_row_ptr(M + 1);
 
+    musaMemcpyAsync(h_row_counts.data(), d_row_counts, M * sizeof(int32_t),
+               musaMemcpyDeviceToHost, raw_stream);
     musaStreamSynchronize(raw_stream);
-
-    musaMemcpy(h_row_counts.data(), d_row_counts, M * sizeof(int32_t),
-               musaMemcpyDeviceToHost);
 
     h_row_ptr[0] = 0;
     for (int64_t i = 0; i < M; ++i) {

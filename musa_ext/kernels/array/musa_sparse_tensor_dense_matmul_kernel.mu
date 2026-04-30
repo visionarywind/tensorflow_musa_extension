@@ -43,7 +43,7 @@ __global__ void ComputeRowCountsKernel(
     const int64_t tid = blockIdx.x * 256 + threadIdx.x;
     if (tid >= nnz) return;
 
-    const int64_t row = indices[tid * 2 + 0];
+    const int64_t row = indices[tid * 2];
     atomicAdd(&row_counts[row], 1);
 }
 
