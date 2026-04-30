@@ -1,3 +1,5 @@
+// musa_sparse_slice_op.cc
+
 #include <vector>
 
 #include "../utils_op.h"
@@ -9,266 +11,98 @@
 using namespace tensorflow;
 
 extern "C" {
-void LaunchGenerateSparseSliceMask1D(const int64_t* indices,
-                                     const int64_t* start, const int64_t* size,
-                                     int64_t N, bool* mask,
-                                     musaStream_t stream);
-void LaunchGenerateSparseSliceMask2D(const int64_t* indices,
-                                     const int64_t* start, const int64_t* size,
-                                     int64_t N, bool* mask,
-                                     musaStream_t stream);
-void LaunchGenerateSparseSliceMask3D(const int64_t* indices,
-                                     const int64_t* start, const int64_t* size,
-                                     int64_t N, bool* mask,
-                                     musaStream_t stream);
-void LaunchGenerateSparseSliceMask4D(const int64_t* indices,
-                                     const int64_t* start, const int64_t* size,
-                                     int64_t N, bool* mask,
-                                     musaStream_t stream);
-void LaunchGenerateSparseSliceMask5D(const int64_t* indices,
-                                     const int64_t* start, const int64_t* size,
-                                     int64_t N, bool* mask,
-                                     musaStream_t stream);
+// New Fused Launchers
+void LaunchGenerateSparseSliceMaskAndCount1D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream);
+void LaunchGenerateSparseSliceMaskAndCount2D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream);
+void LaunchGenerateSparseSliceMaskAndCount3D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream);
+void LaunchGenerateSparseSliceMaskAndCount4D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream);
+void LaunchGenerateSparseSliceMaskAndCount5D(const int64_t* indices, const int64_t* start, const int64_t* size, int64_t N, bool* mask, int32_t* count, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsFloat1D(
-    const int64_t* indices, const float* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    float* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsFloat2D(
-    const int64_t* indices, const float* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    float* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsFloat3D(
-    const int64_t* indices, const float* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    float* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsFloat4D(
-    const int64_t* indices, const float* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    float* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsFloat5D(
-    const int64_t* indices, const float* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    float* out_values, musaStream_t stream);
+// Scan Pipeline
+void LaunchFullScanPipeline(
+    const int32_t* d_counts,
+    int64_t* d_pos,
+    int64_t* d_block_sums,
+    int64_t* d_block_prefix_sums,
+    int64_t N,
+    int64_t block_size,
+    int64_t num_blocks,
+    musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsDouble1D(
-    const int64_t* indices, const double* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    double* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsDouble2D(
-    const int64_t* indices, const double* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    double* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsDouble3D(
-    const int64_t* indices, const double* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    double* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsDouble4D(
-    const int64_t* indices, const double* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    double* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsDouble5D(
-    const int64_t* indices, const double* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    double* out_values, musaStream_t stream);
+void LaunchGetTotalCount(
+    const int64_t* d_block_sums,
+    int64_t* d_total_count,
+    int64_t num_blocks,
+    musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsInt321D(
-    const int64_t* indices, const int32_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int32_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt322D(
-    const int64_t* indices, const int32_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int32_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt323D(
-    const int64_t* indices, const int32_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int32_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt324D(
-    const int64_t* indices, const int32_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int32_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt325D(
-    const int64_t* indices, const int32_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int32_t* out_values, musaStream_t stream);
+// Gather Launchers (Same signatures as before)
+void LaunchGatherSparseSliceElementsFloat1D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsFloat2D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsFloat3D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsFloat4D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsFloat5D(const int64_t* indices, const float* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, float* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsInt641D(
-    const int64_t* indices, const int64_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int64_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt642D(
-    const int64_t* indices, const int64_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int64_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt643D(
-    const int64_t* indices, const int64_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int64_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt644D(
-    const int64_t* indices, const int64_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int64_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt645D(
-    const int64_t* indices, const int64_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int64_t* out_values, musaStream_t stream);
+// ... (Declare other types similarly or include the header that declares them) ...
+// For brevity, assuming all other LaunchGather... are declared here as in original file.
+void LaunchGatherSparseSliceElementsDouble1D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsDouble2D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsDouble3D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsDouble4D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsDouble5D(const int64_t* indices, const double* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, double* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsUInt81D(
-    const int64_t* indices, const uint8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt82D(
-    const int64_t* indices, const uint8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt83D(
-    const int64_t* indices, const uint8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt84D(
-    const int64_t* indices, const uint8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt85D(
-    const int64_t* indices, const uint8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt321D(const int64_t* indices, const int32_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int32_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt322D(const int64_t* indices, const int32_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int32_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt323D(const int64_t* indices, const int32_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int32_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt324D(const int64_t* indices, const int32_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int32_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt325D(const int64_t* indices, const int32_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int32_t* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsInt81D(
-    const int64_t* indices, const int8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt82D(
-    const int64_t* indices, const int8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt83D(
-    const int64_t* indices, const int8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt84D(
-    const int64_t* indices, const int8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int8_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt85D(
-    const int64_t* indices, const int8_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt641D(const int64_t* indices, const int64_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int64_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt642D(const int64_t* indices, const int64_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int64_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt643D(const int64_t* indices, const int64_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int64_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt644D(const int64_t* indices, const int64_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int64_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt645D(const int64_t* indices, const int64_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int64_t* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsInt161D(
-    const int64_t* indices, const int16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt162D(
-    const int64_t* indices, const int16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt163D(
-    const int64_t* indices, const int16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt164D(
-    const int64_t* indices, const int16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsInt165D(
-    const int64_t* indices, const int16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    int16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt81D(const int64_t* indices, const uint8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt82D(const int64_t* indices, const uint8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt83D(const int64_t* indices, const uint8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt84D(const int64_t* indices, const uint8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt85D(const int64_t* indices, const uint8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint8_t* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsUInt161D(
-    const int64_t* indices, const uint16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt162D(
-    const int64_t* indices, const uint16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt163D(
-    const int64_t* indices, const uint16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt164D(
-    const int64_t* indices, const uint16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint16_t* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsUInt165D(
-    const int64_t* indices, const uint16_t* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    uint16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt81D(const int64_t* indices, const int8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt82D(const int64_t* indices, const int8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt83D(const int64_t* indices, const int8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt84D(const int64_t* indices, const int8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int8_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt85D(const int64_t* indices, const int8_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int8_t* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsBool1D(
-    const int64_t* indices, const bool* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    bool* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBool2D(
-    const int64_t* indices, const bool* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    bool* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBool3D(
-    const int64_t* indices, const bool* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    bool* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBool4D(
-    const int64_t* indices, const bool* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    bool* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBool5D(
-    const int64_t* indices, const bool* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    bool* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt161D(const int64_t* indices, const int16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt162D(const int64_t* indices, const int16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt163D(const int64_t* indices, const int16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt164D(const int64_t* indices, const int16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsInt165D(const int64_t* indices, const int16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, int16_t* out_values, musaStream_t stream);
 
-void LaunchGatherSparseSliceElementsHalf1D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsHalf2D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsHalf3D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsHalf4D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsHalf5D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt161D(const int64_t* indices, const uint16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt162D(const int64_t* indices, const uint16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt163D(const int64_t* indices, const uint16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt164D(const int64_t* indices, const uint16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint16_t* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsUInt165D(const int64_t* indices, const uint16_t* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, uint16_t* out_values, musaStream_t stream);
 
-// 元素收集启动器 - BF16
-void LaunchGatherSparseSliceElementsBFloat161D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBFloat162D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBFloat163D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBFloat164D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
-void LaunchGatherSparseSliceElementsBFloat165D(
-    const int64_t* indices, const void* values, const int64_t* start,
-    const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices,
-    void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBool1D(const int64_t* indices, const bool* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, bool* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBool2D(const int64_t* indices, const bool* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, bool* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBool3D(const int64_t* indices, const bool* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, bool* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBool4D(const int64_t* indices, const bool* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, bool* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBool5D(const int64_t* indices, const bool* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, bool* out_values, musaStream_t stream);
 
-void LaunchMaskToCount(const bool* mask, int32_t* count, int64_t N,
-                       musaStream_t stream);
-void LaunchBlockScan(const int32_t* count, int64_t* pos, int64_t* block_sums,
-                     int64_t N, int64_t block_size, musaStream_t stream);
-void LaunchAddBlockPrefixSum(int64_t* pos, const int64_t* block_prefix_sums,
-                             int64_t N, int64_t block_size,
-                             musaStream_t stream);
+void LaunchGatherSparseSliceElementsHalf1D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsHalf2D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsHalf3D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsHalf4D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsHalf5D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+
+void LaunchGatherSparseSliceElementsBFloat161D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBFloat162D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBFloat163D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBFloat164D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
+void LaunchGatherSparseSliceElementsBFloat165D(const int64_t* indices, const void* values, const int64_t* start, const bool* mask, const int64_t* pos, int64_t N, int64_t* out_indices, void* out_values, musaStream_t stream);
 }
 
 namespace tensorflow {
@@ -468,11 +302,14 @@ class MusaSparseSliceOp : public OpKernel {
     }
 
     musaStream_t raw_stream = GetMusaStreamByCtx(context);
+    
+    // --- Memory Allocation ---
     Tensor d_mask_tensor;
     Tensor d_count_tensor;
     Tensor d_pos_tensor;
     Tensor d_block_sums_tensor;
     Tensor d_block_prefix_sums_tensor;
+    Tensor d_total_count_tensor; // Device scalar for total count
 
     OP_REQUIRES_OK(context, context->allocate_temp(DT_BOOL, TensorShape({N}),
                                                    &d_mask_tensor));
@@ -486,77 +323,65 @@ class MusaSparseSliceOp : public OpKernel {
                                                    &d_pos_tensor));
     int64_t* d_pos = d_pos_tensor.flat<int64_t>().data();
 
-    if (ndims == 1) {
-      LaunchGenerateSparseSliceMask1D(
-          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
-          size.flat<int64_t>().data(), N, d_mask, raw_stream);
-    } else if (ndims == 2) {
-      LaunchGenerateSparseSliceMask2D(
-          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
-          size.flat<int64_t>().data(), N, d_mask, raw_stream);
-    } else if (ndims == 3) {
-      LaunchGenerateSparseSliceMask3D(
-          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
-          size.flat<int64_t>().data(), N, d_mask, raw_stream);
-    } else if (ndims == 4) {
-      LaunchGenerateSparseSliceMask4D(
-          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
-          size.flat<int64_t>().data(), N, d_mask, raw_stream);
-    } else if (ndims == 5) {
-      LaunchGenerateSparseSliceMask5D(
-          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
-          size.flat<int64_t>().data(), N, d_mask, raw_stream);
-    }
-
-    const int64_t block_size = 1024;
+    const int64_t block_size = 256; // Match Kernel OPTIMAL_THREADS
     const int64_t num_blocks = (N + block_size - 1) / block_size;
-
-    LaunchMaskToCount(d_mask, d_count, N, raw_stream);
 
     OP_REQUIRES_OK(context,
                    context->allocate_temp(DT_INT64, TensorShape({num_blocks}),
                                           &d_block_sums_tensor));
     int64_t* d_block_sums = d_block_sums_tensor.flat<int64_t>().data();
 
-    LaunchBlockScan(d_count, d_pos, d_block_sums, N, block_size, raw_stream);
-
-    std::vector<int64_t> h_block_sums(num_blocks);
-    std::vector<int64_t> h_block_prefix_sums(num_blocks);
-
-    musaMemcpyAsync(h_block_sums.data(), d_block_sums,
-                    num_blocks * sizeof(int64_t), musaMemcpyDeviceToHost,
-                    raw_stream);
-    musaStreamSynchronize(raw_stream);
-
-    h_block_prefix_sums[0] = 0;
-    for (int64_t i = 1; i < num_blocks; ++i) {
-      h_block_prefix_sums[i] = h_block_prefix_sums[i - 1] + h_block_sums[i - 1];
-    }
-
     OP_REQUIRES_OK(context,
                    context->allocate_temp(DT_INT64, TensorShape({num_blocks}),
                                           &d_block_prefix_sums_tensor));
     int64_t* d_block_prefix_sums =
         d_block_prefix_sums_tensor.flat<int64_t>().data();
+        
+    OP_REQUIRES_OK(context,
+                   context->allocate_temp(DT_INT64, TensorShape({1}),
+                                          &d_total_count_tensor));
+    int64_t* d_total_count = d_total_count_tensor.flat<int64_t>().data();
 
-    musaMemcpyAsync(d_block_prefix_sums, h_block_prefix_sums.data(),
-                    num_blocks * sizeof(int64_t), musaMemcpyHostToDevice,
-                    raw_stream);
-    LaunchAddBlockPrefixSum(d_pos, d_block_prefix_sums, N, block_size,
-                            raw_stream);
+    // --- Execution Pipeline ---
 
-    int64_t out_N = 0;
-    if (N > 0) {
-      int32_t last_count = 0;
-      int64_t last_pos = 0;
-      musaMemcpyAsync(&last_count, d_count + N - 1, sizeof(int32_t),
-                      musaMemcpyDeviceToHost, raw_stream);
-      musaMemcpyAsync(&last_pos, d_pos + N - 1, sizeof(int64_t),
-                      musaMemcpyDeviceToHost, raw_stream);
-      musaStreamSynchronize(raw_stream);
-      out_N = last_pos + last_count;
+    // 1. Fused Mask Generation and Counting
+    if (ndims == 1) {
+      LaunchGenerateSparseSliceMaskAndCount1D(
+          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
+          size.flat<int64_t>().data(), N, d_mask, d_count, raw_stream);
+    } else if (ndims == 2) {
+      LaunchGenerateSparseSliceMaskAndCount2D(
+          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
+          size.flat<int64_t>().data(), N, d_mask, d_count, raw_stream);
+    } else if (ndims == 3) {
+      LaunchGenerateSparseSliceMaskAndCount3D(
+          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
+          size.flat<int64_t>().data(), N, d_mask, d_count, raw_stream);
+    } else if (ndims == 4) {
+      LaunchGenerateSparseSliceMaskAndCount4D(
+          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
+          size.flat<int64_t>().data(), N, d_mask, d_count, raw_stream);
+    } else if (ndims == 5) {
+      LaunchGenerateSparseSliceMaskAndCount5D(
+          indices.flat<int64_t>().data(), start.flat<int64_t>().data(),
+          size.flat<int64_t>().data(), N, d_mask, d_count, raw_stream);
     }
 
+    // 2. Parallel Exclusive Scan (Pos Calculation)
+    LaunchFullScanPipeline(d_count, d_pos, d_block_sums, d_block_prefix_sums,
+                           N, block_size, num_blocks, raw_stream);
+
+    // 3. Calculate Total Count (on Device)
+    LaunchGetTotalCount(d_block_sums, d_total_count, num_blocks, raw_stream);
+
+    // 4. Copy Total Count to Host to allocate output
+    // NOTE: This is the ONLY synchronization point required by TF Op interface for dynamic shapes.
+    int64_t out_N = 0;
+    musaMemcpyAsync(&out_N, d_total_count, sizeof(int64_t),
+                    musaMemcpyDeviceToHost, raw_stream);
+    musaStreamSynchronize(raw_stream);
+
+    // 5. Allocate Outputs
     Tensor* out_indices = nullptr;
     Tensor* out_values = nullptr;
     Tensor* out_dense_shape = nullptr;
@@ -571,6 +396,7 @@ class MusaSparseSliceOp : public OpKernel {
       out_dense_shape->flat<int64_t>()(d) = size.flat<int64_t>()(d);
     }
 
+    // 6. Gather Elements (if any)
     if (out_N > 0) {
       if (ndims == 1) {
         LauncherSelector<T>::Launch1D(
@@ -613,7 +439,7 @@ class MusaSparseSliceOp : public OpKernel {
 };
 
 // ----------------------------------------------------------------------------
-// 算子注册（完整无省略）
+// 算子注册
 // ----------------------------------------------------------------------------
 #define REGISTER_MUSA_SPARSE_SLICE_KERNEL(T)                     \
   REGISTER_KERNEL_BUILDER(                                       \
