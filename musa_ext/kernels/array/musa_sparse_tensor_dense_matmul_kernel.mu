@@ -11,6 +11,35 @@
 #include <stdint.h>
 
 // ============================================================================
+// 自定义 atomicAdd for int64_t
+// 注意：int64_t 在 MUSA/Linux 下通常是 long int
+// ============================================================================
+__device__ int64_t atomicAdd(int64_t* address, int64_t val) {
+    // 使用 unsigned long long 进行 CAS 操作，因为它是原生支持的 64 位原子类型
+    unsigned long long* address_as_ull = reinterpret_cast<unsigned long long*>(address);
+    unsigned long long old = *address_as_ull, assumed;
+
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, assumed + static_cast<unsigned long long>(val));
+    } while (assumed != old);
+
+    return static_cast<int64_t>(old);
+}
+
+__device__ long long atomicAdd(long long* address, long long val) {
+    unsigned long long* address_as_ull = (unsigned long long*)address;
+    unsigned long long old = *address_as_ull, assumed;
+
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed, assumed + val);
+    } while (assumed != old);
+
+    return (long long)old;
+}
+
+// ============================================================================
 // 辅助核函数 1：统计 COO 稀疏矩阵每行的非零元素个数
 // ============================================================================
 __global__ void ComputeRowCountsKernel(
@@ -100,7 +129,7 @@ __global__ void FillCSRKernel(
     const int64_t* __restrict__ indices,  // COO 索引，[nnz, 2]
     const float* __restrict__ values,     // COO 值，[nnz]
     const int64_t nnz,
-    const int64_t* __restrict__ row_ptr,  // CSR row_ptr，[M+1]
+    int64_t* __restrict__ row_ptr,  // CSR row_ptr，[M+1]
     int64_t* __restrict__ col_idx,         // 输出 CSR col_idx，[nnz]
     float* __restrict__ csr_values) {      // 输出 CSR values，[nnz]
 
@@ -115,7 +144,7 @@ __global__ void FillCSRKernel(
     // 计算在 CSR 中的位置：row_ptr[row] + 该行内的偏移
     // 这里简化处理：用原子加获取该行内的偏移
     // 注意：工业级实现应该先对 COO 按行排序，这里为了简化演示
-    int64_t csr_idx = atomicAdd(const_cast<int64_t*>(&row_ptr[row]), 1LL);
+    int64_t csr_idx = atomicAdd(&row_ptr[row], 1LL);
     col_idx[csr_idx] = col;
     csr_values[csr_idx] = val;
 }
@@ -195,7 +224,7 @@ void LaunchAddBlockPrefixSum(int64_t* pos, const int64_t* block_prefix_sums, int
     AddBlockPrefixSumKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(pos, block_prefix_sums, N, block_size);
 }
 
-void LaunchFillCSR(const int64_t* indices, const float* values, int64_t nnz, const int64_t* row_ptr, int64_t* col_idx, float* csr_values, musaStream_t stream) {
+void LaunchFillCSR(const int64_t* indices, const float* values, int64_t nnz, int64_t* row_ptr, int64_t* col_idx, float* csr_values, musaStream_t stream) {
     if (nnz == 0) return;
     const int blocks = OPTIMAL_BLOCKS(nnz);
     FillCSRKernel<<<blocks, OPTIMAL_THREADS, 0, stream>>>(indices, values, nnz, row_ptr, col_idx, csr_values);
